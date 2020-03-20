@@ -160,6 +160,12 @@ class RegressionTable(pd.DataFrame):
 
 
     def join_regression(self, regression_model, **kwargs):
+
+        '''
+        Adds a regression column to the RegressionTable.
+        The column is created from a fitted statsmodels or linearmodels model.    
+        '''
+
         self._nregs += 1
         if type(regression_model) is sm.regression.linear_model.RegressionResultsWrapper:
             column = create_statsmodels_summary_column(regression_model, **kwargs).rename('('+str(self._nregs)+')')
