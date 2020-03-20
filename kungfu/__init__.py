@@ -1,0 +1,1 @@
+from kungfu.regtable import RegressionTable
