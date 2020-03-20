@@ -6,7 +6,7 @@ Note: This package is under limited-maintenance mode.
 
 ## Important links
 
-Dependencies
+## Dependencies
 The required dependencies to use kungfu are
 
 Python >= 3.5
