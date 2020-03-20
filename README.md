@@ -1,4 +1,4 @@
-# KungFu Package
+# kungfu Package
 
 This is a package for asset pricing analysis with pandas dataframes.
 
