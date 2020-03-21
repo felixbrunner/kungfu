@@ -1,3 +1,7 @@
+import os
+import numpy as np
+import datetime as dt
+
 def find_csv_filenames(path_to_dir, extension = ".csv"):
 
     '''
