@@ -163,7 +163,7 @@ class RegressionTable(pd.DataFrame):
 
         '''
         Adds a regression column to the RegressionTable.
-        The column is created from a fitted statsmodels or linearmodels model.    
+        The column is created from a fitted statsmodels or linearmodels model.
         '''
 
         self._nregs += 1
@@ -179,6 +179,11 @@ class RegressionTable(pd.DataFrame):
 
 
     def export_to_latex(self, filename=None, **kwargs):
+
+        '''
+        Exports the table to a LaTeX file to be embedded in a reasearch paper.
+        '''
+
         if filename is None:
             filename = input('Specify a filename (e.g.: regression_table.tex):')
         if filename[-4:] != '.tex':
@@ -187,6 +192,13 @@ class RegressionTable(pd.DataFrame):
 
 
     def change_row_labels(self, index_dict):
+
+        '''
+        Puts new labels on the rows.
+        Inputs:
+          - index_dict: A dictionary that maps old row labels to new row labels.
+        '''
+
         label_map = dict(zip(self.index.get_level_values(0),\
                              self.index.get_level_values(0)))
         label_map.update(index_dict)
@@ -197,6 +209,13 @@ class RegressionTable(pd.DataFrame):
 
 
     def change_column_labels(self, reg_dict):
+
+        '''
+        Puts new labels on the regression columns.
+        Inputs:
+          - reg_dict: A dictionary that maps old row column labels to new regression labels.
+        '''
+
         label_map = dict(zip(self.columns, self.columns))
         label_map.update(reg_dict)
         new_columns = pd.Index([label_map.get(i) for i in list(self.columns)])
@@ -205,6 +224,11 @@ class RegressionTable(pd.DataFrame):
 
 
     def drop_second_index(self):
+
+        '''
+        Removes the second layer of row labels.
+        '''
+
         new_index = list(regtable.index.get_level_values(0))
         hide_duplicate = [False]+[i==j for i,j in zip(new_index[1:], new_index[:-1])]
         new_index = ['' if h else i for i,h in zip(new_index,hide_duplicate)]
@@ -213,6 +237,13 @@ class RegressionTable(pd.DataFrame):
 
 
     def change_variable_order(self, variable_list):
+
+        '''
+        Puts regression variables in new order.
+        Inputs:
+        variable_list: A list of variables in desired order.
+        '''
+
         top = self[self.index.get_level_values(1) != '']
         bottom = self[self.index.get_level_values(1) == '']
         second_level = list(top.index.get_level_values(1).unique())
