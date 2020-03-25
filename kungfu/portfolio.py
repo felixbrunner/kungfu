@@ -3,6 +3,9 @@ import scipy as sp
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# # TODO: write class to use tidy frames
+# Output table class
+
 
 
 def sort_portfolios(returns, ranking_variable, n_portfolios, lags=1, return_assets=False):

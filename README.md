@@ -9,10 +9,10 @@ Note: This package is under limited-maintenance mode.
 ## Dependencies
 The required dependencies to use kungfu are
 
-Python >= 3.5
-NumPy
-pandas
-matplotlib
+- Python >= 3.5
+- NumPy
+- pandas
+- matplotlib
 
 ## Installation
 not implemented
