@@ -31,3 +31,15 @@ def add_months_to_date(date, delta_months=1):
     for i in range(0,delta_months):
         date = (date.replace(day=1) + dt.timedelta(days=32)).replace(day=1)
     return date
+
+
+def standardise_dataframe(df, ax=0):
+
+    '''
+    Standardises dataframe along input dimension.
+    Standardisation involves subtracting the mean and dividing by the standard deviation.
+    '''
+    
+    df = df.subtract(df.mean(axis=ax), axis=ax)
+    df = df.divide(df.std(axis=ax), axis=ax)
+    return df
