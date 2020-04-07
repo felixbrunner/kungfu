@@ -369,71 +369,8 @@ class FinancialSeries(pd.Series):
 
 
     ## # TODO: calculate_certainty_equivalent, estimate_factor_model
-    # calculate_idiosyncratic_volatility
+    # calculate_idiosyncratic_volatility, calculate_parametric_expected_shortfall
+    # preserve kf attributes when using pandas methods
 
 
     ## DEPRECATED CODE
-
-
-    def convert_prices_to_returns(self):
-        '''
-        Converts a financial series from observation type price to return.
-        '''
-        assert self.obstype is 'price', 'obstype is not price'
-        returns = self.pct_change()
-        returns.obstype = 'return'
-        return returns
-
-
-    def convert_prices_to_logreturns(self):
-        '''
-        Converts a financial series from observation type price to logreturn.
-        '''
-        assert self.obstype is 'price', 'obstype is not price'
-        logreturns = np.log(self) - np.log(self.shift(1))
-        logreturns.obstype = 'logreturn'
-        return logreturns
-
-
-    def convert_returns_to_prices(self, init_price=100): # TODO: adapt for incomplete series
-        '''
-        Converts a financial series from observation type return to logreturn.
-        '''
-        assert self.obstype is 'return', 'obstype is not return'
-        prices = self+1
-        prices.iat[0] = init_price
-        prices = prices.cumprod()
-        prices.obstype = 'price'
-        return prices
-
-
-    def convert_returns_to_logreturns(self):
-        '''
-        Converts a financial series from observation type return to logreturn.
-        '''
-        assert self.obstype is 'return', 'obstype is not return'
-        logreturns = np.log(self+1)
-        logreturns.obstype = 'logreturn'
-        return logreturns
-
-
-    def convert_logreturns_to_prices(self, init_price=100): # TODO: adapt for incomplete series
-        '''
-        Converts a financial series from observation type return to logreturn.
-        '''
-        assert self.obstype is 'logreturn', 'obstype is not logreturn'
-        prices = np.exp(self)
-        prices.iat[0] = init_price
-        prices = prices.cumprod()
-        prices.obstype = 'price'
-        return prices
-
-
-    def convert_logreturns_to_returns(self):
-        '''
-        Converts a financial series from observation type return to logreturn.
-        '''
-        assert self.obstype is 'logreturn', 'obstype is not logreturn'
-        returns = np.exp(self)-1
-        returns.obstype = 'return'
-        return returns
