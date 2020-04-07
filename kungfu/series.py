@@ -165,6 +165,17 @@ class FinancialSeries(pd.Series):
             return first_observation.values[0]
 
 
+    def calculate_total_return(self):
+        '''
+        Calculates the total return of a financial series.
+        '''
+        assert self.obstype in ['price','return','logreturn'],\
+            'type needs to be price, return, or logreturn'
+        gross_returns = self.to_returns()+1
+        total_return = gross_returns.prod()-1
+        return total_return
+
+
     def calculate_t_statistic(self, hypothesis=0, alpha=None):
         '''
         Returns the t-statistic for the mean of returns given a hypothesis.
@@ -323,6 +334,38 @@ class FinancialSeries(pd.Series):
         conditional_returns = returns[returns<cutoff]
         expected_shortfall = conditional_returns.mean()
         return expected_shortfall*period_obs
+
+
+    def summarise_performance(self, annual_obs=1):
+        '''
+        Summarises the performance of a financial series.
+        '''
+        summary = pd.Series(dtype='float')
+        summary = summary.append(pd.Series({'Return p.a. (arithmetic)': \
+            self.calculate_annual_arithmetic_return(annual_obs)}))
+        summary = summary.append(pd.Series({'Return p.a. (geometric)': \
+            self.calculate_annual_geometric_return(annual_obs)}))
+        summary = summary.append(pd.Series({'Volatility p.a.': \
+            self.calculate_annual_volatility(annual_obs)}))
+        summary = summary.append(pd.Series({'Sharpe ratio': \
+            self.calculate_sharpe_ratio(annual_obs)}))
+        summary = summary.append(pd.Series({'t-stat': \
+            self.calculate_t_statistic()}))
+        summary = summary.append(pd.Series({'Total return': \
+            self.calculate_total_return()}))
+        summary = summary.append(pd.Series({'Positive returns %': \
+            self.calculate_gain_percentage()*100}))
+        summary = summary.append(pd.Series({'VaR 95% (historic)': \
+            self.calculate_historic_value_at_risk()}))
+        summary = summary.append(pd.Series({'VaR 95% (parametric)': \
+            self.calculate_parametric_value_at_risk()}))
+        summary = summary.append(pd.Series({'Expected shortfall 95%': \
+            self.calculate_historic_expected_shortfall()}))
+        summary = summary.append(pd.Series({'Downside volatility': \
+            self.calculate_downside_volatility()}))
+        summary = summary.append(pd.Series({'Maximum drawdown': \
+            self.calculate_max_drawdown()}))
+        return summary
 
 
     ## # TODO: calculate_certainty_equivalent, estimate_factor_model
