@@ -15,7 +15,11 @@ class FinancialSeries(pd.Series):
     # constructor properties to output the right types
     @property
     def _constructor(self):
-        return FinancialSeries
+        def construct(*args, **kwargs):
+            fs = FinancialSeries(*args, **kwargs)
+            self._copy_attributes(fs)
+            return fs
+        return construct
 
     @property
     def _constructor_expanddim(self):
@@ -25,10 +29,22 @@ class FinancialSeries(pd.Series):
 
     def __init__(self, *args, **kwargs):
         super(FinancialSeries, self).__init__(*args, **kwargs)
+        if len(args) == 1 and isinstance(args[0], FinancialSeries):
+            args[0]._copy_attributes(self)
         self.obstype = None
 
 
-    def set_obstype(self, obstype=None):
+    def _copy_attributes(self, fs):
+        '''
+        Helps to keep attributes attached to instances of FinancialSeries to
+        still be attached to the output when callung standard pandas methods on
+        Series.
+        '''
+        for attribute in self._attributes_.split(","):
+            fs.__dict__[attribute] = getattr(self, attribute)
+
+
+    def set_obstype(self, obstype):
         assert obstype in ['price',
                            'return',
                            'logreturn',
@@ -50,13 +66,12 @@ class FinancialSeries(pd.Series):
 
         elif self.obstype is 'price':
             returns = self.pct_change()
-            returns.obstype = 'return'
-            return returns
 
         elif self.obstype is 'logreturn':
             returns = np.exp(self)-1
-            returns.obstype = 'return'
-            return returns
+
+        returns.obstype = 'return'
+        return returns
 
 
     def to_logreturns(self):
@@ -70,14 +85,13 @@ class FinancialSeries(pd.Series):
             return self
 
         elif self.obstype is 'price':
-            logreturns = np.log(self) - np.log(self.shift(1))
-            logreturns.obstype = 'logreturn'
-            return logreturns
+            logreturns = np.log(self) - np.log(self.shift(periods=1))
 
         elif self.obstype is 'return':
             logreturns = np.log(self+1)
-            logreturns.obstype = 'logreturn'
-            return logreturns
+
+        logreturns.obstype = 'logreturn'
+        return logreturns
 
 
     def to_prices(self, init_price=1):
@@ -94,24 +108,21 @@ class FinancialSeries(pd.Series):
                 warnings.warn('rescaling prices, previous values will be lost')
                 first_price = self.find_first_observation(output='value')
                 prices = self / first_price * init_price
-                prices.obstype = 'price'
-                return prices
 
         elif self.obstype is 'return':
             prices = self+1
             start_index = self.find_first_observation(output='row')-1
             prices.iat[start_index] = init_price
             prices = prices.cumprod()
-            prices.obstype = 'price'
-            return prices
 
         elif self.obstype is 'logreturn':
             prices = np.exp(self)
             start_index = self.find_first_observation(output='row')-1
             prices.iat[start_index] = init_price
             prices = prices.cumprod()
-            prices.obstype = 'price'
-            return prices
+
+        prices.obstype = 'price'
+        return prices
 
 
     def to_obstype(self, type, *args, **kwargs):
@@ -207,7 +218,6 @@ class FinancialSeries(pd.Series):
         lower = returns.quantile(alpha)
         upper = returns.quantile(1-alpha)
         winsorised = returns.clip(lower, upper)
-        winsorised.obstype = 'return'
         return winsorised.to_obstype(obstype, *args, **kwargs)
 
 
