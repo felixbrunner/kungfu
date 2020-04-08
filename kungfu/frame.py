@@ -16,7 +16,7 @@ class FinancialDataFrame(pd.DataFrame):
 
     #attribute copy causes error for FinancialDataFrame (cause: _from_axes)
     #https://github.com/pandas-dev/pandas/issues/19300
-    
+
     #@property
     #def _constructor(self):
     #    def construct(*args, **kw):
@@ -53,3 +53,5 @@ class FinancialDataFrame(pd.DataFrame):
 
 ## TODO: needs to store FinancialSeries obstype
 ## make series methods available
+
+## Calculate GRS test on factormodel

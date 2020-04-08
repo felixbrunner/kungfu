@@ -378,6 +378,22 @@ class FinancialSeries(pd.Series):
         return summary
 
 
+    def calculate_certainty_equivalent(self, utility_function):
+        '''
+        Returns the certainty equivalent of a FinancialSeries, given a utility
+        function.
+        '''
+        assert self.obstype in ['price','return','logreturn'],\
+            'obstype needs to be price, return, or logreturn'
+        returns = self.to_returns()
+        expected_utility = returns.apply(utility_function).mean()
+
+        utility_difference = lambda r : utility_function(r)-expected_utility
+        certainty_equivalent = sp.optimize.fsolve(utility_difference,0)
+        return certainty_equivalent[0]
+
+
+
     ## # TODO: calculate_certainty_equivalent, estimate_factor_model
     # calculate_idiosyncratic_volatility, calculate_parametric_expected_shortfall
     # preserve kf attributes when using pandas methods
