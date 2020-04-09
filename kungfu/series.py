@@ -553,7 +553,7 @@ class FinancialSeries(pd.Series):
         meth - zero, ffill, bfill
         limit - integer
         '''
-        
+
         obstype = self.obstype
         assert obstype in ['price','return','logreturn'],\
             'obstype needs to be price, return, or logreturn'
@@ -572,6 +572,21 @@ class FinancialSeries(pd.Series):
             filled = filled.to_obstype(obstype)
         return filled
 
+
+    def calculate_realised_volatility(self, annual_obs=1):
+
+        '''
+        Calculates realised volatility for a FinancialSeries of obstype price,
+        return or logreturn from squared returns.
+        If annual_obs is input, the result will be annualised.
+        '''
+
+        assert self.obstype in ['price','return','logreturn'],\
+            'obstype needs to be price, return, or logreturn'
+        returns = self.to_returns()
+        
+        realised_volatility = ((returns**2).mean())**0.5 * np.sqrt(annual_obs)
+        return realised_volatility
 
     ## # TODO:
     # estimate_factor_model
