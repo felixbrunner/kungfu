@@ -7,7 +7,7 @@ import warnings
 class FinancialSeries(pd.Series):
 
     '''
-    A Financial Series is a pandas Series that contains financial observations.
+    A FinancialSeries is a pandas Series that contains financial observations.
     '''
 
     _attributes_ = "obstype"
@@ -35,16 +35,24 @@ class FinancialSeries(pd.Series):
 
 
     def _copy_attributes(self, fs):
+
         '''
         Helps to keep attributes attached to instances of FinancialSeries to
         still be attached to the output when callung standard pandas methods on
         Series.
         '''
+
         for attribute in self._attributes_.split(","):
             fs.__dict__[attribute] = getattr(self, attribute)
 
 
     def set_obstype(self, obstype):
+
+        '''
+        Sets FinancialSeries attribute obstype.
+        Needs to be in price, return, logreturn, characteristic, or None.
+        '''
+
         assert obstype in ['price',
                            'return',
                            'logreturn',
@@ -55,9 +63,12 @@ class FinancialSeries(pd.Series):
 
 
     def to_returns(self):
+
         '''
-        Converts a financial series to obstype return.
+        Converts a FinancialSeries of obstype price, return or logreturns to
+        obstype return.
         '''
+
         assert self.obstype in ['price','return','logreturn'],\
             'obstype is not price, return, or logreturn'
 
@@ -75,9 +86,12 @@ class FinancialSeries(pd.Series):
 
 
     def to_logreturns(self):
+
         '''
-        Converts a financial series to obstype logreturn.
+        Converts a FinancialSeries of obstype price, return or logreturns to
+        obstype logreturn.
         '''
+
         assert self.obstype in ['price','return','logreturn'],\
             'obstype is not price, return, or logreturn'
 
@@ -95,9 +109,12 @@ class FinancialSeries(pd.Series):
 
 
     def to_prices(self, init_price=1):
+
         '''
-        Converts a financial series to obstype prices.
+        Converts a FinancialSeries of obstype price, return or logreturns to
+        obstype prices.
         '''
+
         assert self.obstype in ['price','return','logreturn'],\
             'obstype is not price, return, or logreturn'
 
@@ -126,37 +143,53 @@ class FinancialSeries(pd.Series):
 
 
     def to_obstype(self, type, *args, **kwargs):
+
         '''
-        Converts a financial series to input obstype.
+        Converts a FinancialSeries of obstype price, return or logreturns to
+        input obstype.
         '''
+
         assert type in ['price','return','logreturn'],\
             'type needs to be price, return, or logreturn'
+
         if type is 'price':
             return self.to_prices(*args, **kwargs)
+
         elif type is 'return':
             return self.to_returns()
+
         elif type is 'logreturn':
             return self.to_logreturns()
 
 
     def to_index(self):
+
         '''
-        Converts a financial series into an index starting from 100.
+        Converts a FinancialSeries of obstype price, return or logreturns into
+        an index starting from 100.
         '''
+
         return self.to_prices(init_price=100)
 
 
     def to_cumreturns(self):
+
         '''
-        Converts a financial series to cumulative returns.
+        Converts a FinancialSeries of obstype price, return or logreturns to
+        cumulative returns.
         '''
+
         return self.to_prices(init_price=1)-1
 
 
     def find_first_observation(self, output='full'):
+
         '''
         Finds the first available observation and returns it with its index.
+        Inputs:
+        output - full, index, row, or value
         '''
+
         assert output in ['full', 'index', 'row', 'value'],\
             'output needs to be full, index, row, or value'
 
@@ -177,9 +210,12 @@ class FinancialSeries(pd.Series):
 
 
     def calculate_total_return(self):
+
         '''
-        Calculates the total return of a financial series.
+        Calculates the total return of a FinancialSeries of obstype price,
+        return or logreturns.
         '''
+
         assert self.obstype in ['price','return','logreturn'],\
             'type needs to be price, return, or logreturn'
         gross_returns = self.to_returns()+1
@@ -188,14 +224,18 @@ class FinancialSeries(pd.Series):
 
 
     def calculate_t_statistic(self, hypothesis=0, alpha=None):
+
         '''
         Returns the t-statistic for the mean of returns given a hypothesis.
+        Input needs to be of obstype price, return or logreturns.
         '''
+
+        assert self.obstype in ['price','return','logreturn'],\
+            'type needs to be price, return, or logreturn'
         returns = self.to_returns()
         sigma2 = returns.var()
         mu = returns.mean()
         num_obs = returns.count()
-
         t_statistic = (mu-hypothesis)/np.sqrt(sigma2/num_obs)
 
         if alpha is None:
@@ -208,9 +248,12 @@ class FinancialSeries(pd.Series):
 
 
     def winsorise_returns(self, alpha=0.05, *args, **kwargs):
+
         '''
         Winsorises a return series.
+        Input needs to be of obstype price, return or logreturns.
         '''
+
         obstype = self.obstype
         assert obstype in ['price','return','logreturn'],\
             'obstype needs to be price, return, or logreturn'
@@ -222,9 +265,12 @@ class FinancialSeries(pd.Series):
 
 
     def calculate_annual_arithmetic_return(self, annual_obs):
+
         '''
-        Calculates the annualised arithmetic return.
+        Calculates the annualised arithmetic return for a FinancialSeries of
+        obstype price, return or logreturns.
         '''
+
         assert self.obstype in ['price','return','logreturn'],\
             'obstype needs to be price, return, or logreturn'
         returns = self.to_returns()
@@ -233,9 +279,12 @@ class FinancialSeries(pd.Series):
 
 
     def calculate_annual_geometric_return(self, annual_obs):
+
         '''
-        Calculates the annualised geometic return.
+        Calculates the annualised geometic return for a FinancialSeries of
+        obstype price, return or logreturns.
         '''
+
         assert self.obstype in ['price','return','logreturn'],\
             'obstype needs to be price, return, or logreturn'
         gross_returns = self.to_returns()+1
@@ -245,9 +294,12 @@ class FinancialSeries(pd.Series):
 
 
     def calculate_annual_volatility(self, annual_obs):
+
         '''
-        Calculates the annualised volatility.
+        Calculates the annualised volatility for a FinancialSeries of obstype
+        price, return or logreturns.
         '''
+
         assert self.obstype in ['price','return','logreturn'],\
             'obstype needs to be price, return, or logreturn'
         returns = self.to_returns()
@@ -256,9 +308,12 @@ class FinancialSeries(pd.Series):
 
 
     def calculate_gain_percentage(self):
+
         '''
-        Calculates the annualised volatility.
+        Calculates the annualised volatility for a FinancialSeries of obstype
+        price, return or logreturns.
         '''
+
         assert self.obstype in ['price','return','logreturn'],\
             'obstype needs to be price, return, or logreturn'
         returns = self.to_returns()
@@ -267,9 +322,12 @@ class FinancialSeries(pd.Series):
 
 
     def calculate_sharpe_ratio(self, annual_obs, return_type='geometric'):
+
         '''
-        Calculates the Shape ratio.
+        Calculates the Shape ratio for a FinancialSeries of obstype price,
+        return or logreturns.
         '''
+
         assert self.obstype in ['price','return','logreturn'],\
             'obstype needs to be price, return, or logreturn'
         assert return_type in ['geometric', 'arithmetic'],\
@@ -277,17 +335,22 @@ class FinancialSeries(pd.Series):
 
         if return_type is 'geometric':
             ret = self.calculate_annual_geometric_return(annual_obs)
+
         else:
             ret = self.calculate_annual_arithmetic_return(annual_obs)
+
         volatility = self.calculate_annual_volatility(annual_obs)
         sharpe_ratio = ret/volatility
         return sharpe_ratio
 
 
     def calculate_downside_volatility(self, annual_obs=1):
+
         '''
-        Calculates the downside volatility.
+        Calculates the downside volatility for a FinancialSeries of obstype
+        price, return or logreturns..
         '''
+
         assert self.obstype in ['price','return','logreturn'],\
             'obstype needs to be price, return, or logreturn'
         returns = self.to_returns()
@@ -299,9 +362,12 @@ class FinancialSeries(pd.Series):
 
 
     def calculate_max_drawdown(self):
+
         '''
-        Calculates the maximum drawdown.
+        Calculates the maximum drawdown for a FinancialSeries of obstype price,
+        return or logreturns.
         '''
+
         assert self.obstype in ['price','return','logreturn'],\
             'obstype needs to be price, return, or logreturn'
         prices = self.to_prices()
@@ -310,9 +376,12 @@ class FinancialSeries(pd.Series):
 
 
     def calculate_historic_value_at_risk(self, confidence=0.95, period_obs=1):
+
         '''
-        Calculates the historic VaR.
+        Calculates the historic VaR for a FinancialSeries of obstype price,
+        return or logreturns.
         '''
+
         assert self.obstype in ['price','return','logreturn'],\
             'obstype needs to be price, return, or logreturn'
         returns = self.to_returns()
@@ -321,22 +390,29 @@ class FinancialSeries(pd.Series):
 
 
     def calculate_parametric_value_at_risk(self, confidence=0.95, period_obs=1):
+
         '''
-        Calculates the parametric VaR.
+        Calculates the parametric VaR for a FinancialSeries of obstype price,
+        return or logreturns.
         '''
+
         assert self.obstype in ['price','return','logreturn'],\
             'obstype needs to be price, return, or logreturn'
         returns = self.to_returns()
+        alpha = 1-confidence
         mu = returns.mean()
         sigma = returns.std()
-        value_at_risk = sp.stats.norm.ppf(1-confidence, loc=mu, scale=sigma)
+        value_at_risk = mu+sigma*sp.stats.norm.ppf(alpha)
         return value_at_risk*period_obs
 
 
     def calculate_historic_expected_shortfall(self, confidence=0.95, period_obs=1):
+
         '''
-        Calculates the historic expected shortfall (conditional VaR).
+        Calculates the historic expected shortfall (conditional VaR) for a
+        FinancialSeries of obstype price, return or logreturns.
         '''
+
         assert self.obstype in ['price','return','logreturn'],\
             'obstype needs to be price, return, or logreturn'
         returns = self.to_returns()
@@ -346,10 +422,33 @@ class FinancialSeries(pd.Series):
         return expected_shortfall*period_obs
 
 
+    def calculate_parametric_expected_shortfall(self, confidence=0.95, period_obs=1):
+
+        '''
+        Calculates the historic expected shortfall (conditional VaR) for a
+        FinancialSeries of obstype price, return or logreturns.
+        '''
+
+        assert self.obstype in ['price','return','logreturn'],\
+            'obstype needs to be price, return, or logreturn'
+        returns = self.to_returns()
+        alpha = 1-confidence
+        mu = returns.mean()
+        sigma = returns.std()
+        factor = sp.stats.norm.pdf(sp.stats.norm.ppf(alpha))
+        expected_shortfall = mu-sigma/alpha*factor
+        return expected_shortfall*period_obs
+
+
     def summarise_performance(self, annual_obs=1):
+
         '''
-        Summarises the performance of a financial series.
+        Summarises the performance of a FinancialSeries of obstype price, return
+        or logreturns.
         '''
+
+        assert self.obstype in ['price','return','logreturn'],\
+            'obstype needs to be price, return, or logreturn'
         summary = pd.Series(dtype='float')
         summary = summary.append(pd.Series({'Return p.a. (arithmetic)': \
             self.calculate_annual_arithmetic_return(annual_obs)}))
@@ -378,25 +477,107 @@ class FinancialSeries(pd.Series):
         return summary
 
 
-    def calculate_certainty_equivalent(self, utility_function):
+    def calculate_certainty_equivalent(self, utility_function, **kwargs):
+
         '''
-        Returns the certainty equivalent of a FinancialSeries, given a utility
-        function.
+        Returns the certainty equivalent of a FinancialSeries of obstype price,
+        return or logreturns, given a utility function.
+        Inputs:
+        utility_function - a function handle that defines utility give a return
         '''
+
         assert self.obstype in ['price','return','logreturn'],\
             'obstype needs to be price, return, or logreturn'
         returns = self.to_returns()
-        expected_utility = returns.apply(utility_function).mean()
-
+        expected_utility = returns.apply(utility_function, **kwargs).mean()
         utility_difference = lambda r : utility_function(r)-expected_utility
         certainty_equivalent = sp.optimize.fsolve(utility_difference,0)
         return certainty_equivalent[0]
 
 
+    def standardise_values(self, loc=0, scale=1, return_params=False):
 
-    ## # TODO: calculate_certainty_equivalent, estimate_factor_model
-    # calculate_idiosyncratic_volatility, calculate_parametric_expected_shortfall
-    # preserve kf attributes when using pandas methods
+        '''
+        Standardises FinancialSeries by subtracting the mean and dividing by the
+        standard deviation.
+        '''
+
+        mu = self.mean()+loc
+        sigma = self.std()*scale
+        fs_standardised = self.subtract(mu).divide(sigma)
+        if return_params:
+            return fs_standardised, (mu, sigma)
+        else:
+            return fs_standardised
+
+
+    def shrink_outliers(self, alpha=0.05, lamb=1):
+
+        '''
+        This function shrinks outliers in a series towards the threshold values.
+        The parameter alpha defines the threshold values as a multiple of one sample standard deviation.
+        The parameter lamb defines the degree of shrinkage of outliers towards the thresholds.
+
+        The transformation is as follows:
+        if the z score is inside the thresholds f(x)=x
+        if it is above the upper threshold f(x)=1+1/lamb*ln(x+(1-lamb)/lamb)-1/lamb*ln(1/lamb)
+        if it is below the lower threshold f(x)=-1-1/lamb*ln(-x+(1-lamb)/lamb)+1/lamb*ln(1/lamb)
+        '''
+
+        mu = self.mean()
+        sigma = self.std()
+        valid = self.notna()
+        z_scores = self[valid].standardise_values()
+        threshold = abs(sp.stats.norm.ppf(alpha))
+
+        adjusted_scores = z_scores/threshold
+        adjusted_scores[adjusted_scores.values>1] = \
+            1+1/lamb*np.log(adjusted_scores[adjusted_scores.values>1]+ \
+            (1-lamb)/lamb)-1/lamb*np.log(1/lamb)
+        adjusted_scores[adjusted_scores.values<-1] = \
+            -1-1/lamb*np.log((1-lamb)/lamb-adjusted_scores[adjusted_scores.values<-1])+ \
+            1/lamb*np.log(1/lamb)
+
+        shrank_z_scores = adjusted_scores*threshold
+        shrank_series = self.copy()
+        shrank_series[valid] = shrank_z_scores*sigma+mu
+        return shrank_series
+
+
+    def fill_missing_prices_inside(self, method = 'ffill', limit = None):
+
+        '''
+        fills missing values in the middle of a FinancialSeries
+        (but not at beginning and end)
+        Inputs:
+        meth - zero, ffill, bfill
+        limit - integer
+        '''
+        
+        obstype = self.obstype
+        assert obstype in ['price','return','logreturn'],\
+            'obstype needs to be price, return, or logreturn'
+        if obstype is not 'price':
+            prices = self.to_prices()
+        else:
+            prices = self
+
+        noprice = (prices.bfill().isna() | prices.ffill().isna())
+        if method is 'zero':
+            filled = prices.fillna(0)
+        else:
+            filled = prices.fillna(method = method, limit = limit)
+        filled[noprice] = np.nan
+        if obstype is not 'price':
+            filled = filled.to_obstype(obstype)
+        return filled
+
+
+    ## # TODO:
+    # estimate_factor_model
+    # calculate_idiosyncratic_volatility
+    # realised volatility from returns
+
 
 
     ## DEPRECATED CODE

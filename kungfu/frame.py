@@ -7,7 +7,8 @@ from kungfu.series import FinancialSeries
 class FinancialDataFrame(pd.DataFrame):
 
     '''
-    A Financial Data Frame is a pandas DataFrame that contains financial observations.
+    A Financial Data Frame is a pandas DataFrame that contains financial
+    observations.
     '''
 
     _attributes_ = "obstypes"
@@ -42,16 +43,45 @@ class FinancialDataFrame(pd.DataFrame):
 
 
     def _copy_attributes(self, fdf):
+
         '''
         Helps to keep attributes attached to instances of FinancialDataFrame to
         still be attached to the output when callung standard pandas methods on
         DataFrame.
         '''
+
         for attribute in self._attributes_.split(","):
             fdf.__dict__[attribute] = getattr(self, attribute)
+
+
+    def standardise_values(self, ax=0, loc=0, scale=1):
+
+        '''
+        Standardises dataframe along input dimension.
+        Standardisation involves subtracting the mean and dividing by the
+        standard deviation.
+        '''
+
+        mus = self.mean(axis=ax)+loc
+        sigmas = self.std(axis=ax)*scale
+        fdf_standardised = self.subtract(mus, axis=ax).divide(sigmas, axis=ax)
+        return fdf_standardised
+
+
+    def export_to_latex(self, filename='financialdataframe.tex', **kwargs):
+
+        '''
+        Exports FinancialDataFrame to LaTex format and saves it to a tex file
+        using standard configuration settings.
+        '''
+
+        if filename[-4:] != '.tex':
+            filename += '.tex'
+        self.to_latex(buf=filename, multirow=False, multicolumn_format ='c',\
+                        na_rep='', escape=False, **kwargs)
 
 
 ## TODO: needs to store FinancialSeries obstype
 ## make series methods available
 
-## Calculate GRS test on factormodel
+## Calculate GRS test on factormodel class
