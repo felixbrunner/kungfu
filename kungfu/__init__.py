@@ -1,5 +1,5 @@
 from kungfu.regtable import RegressionTable
-from kungfu.dataloader import *
+import kungfu.dataloader as dataloader
 
 from kungfu.series import FinancialSeries
 from kungfu.frame import FinancialDataFrame

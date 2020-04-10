@@ -6,6 +6,9 @@ import requests
 import io
 import zipfile
 
+from kungfu.series import FinancialSeries
+from kungfu.frame import FinancialDataFrame
+
 
 def download_factor_data(freq='D'):
 
@@ -21,7 +24,7 @@ def download_factor_data(freq='D'):
         factors_daily = factors_daily.join(mom)
         factors_daily = factors_daily[['Mkt-RF','SMB','HML','Mom   ','RF']]
         factors_daily.columns = ['Mkt-RF','SMB','HML','Mom','RF']
-        return factors_daily
+        return FinancialDataFrame(factors_daily)
 
     elif freq is 'M':
         # Download Carhartt 4 Factors
@@ -33,7 +36,7 @@ def download_factor_data(freq='D'):
       #  factors_monthly.columns = ['Mkt-RF','SMB','HML','Mom','RF']
         factors_monthly.columns = ['Mkt-RF','SMB','HML','RF']
         factors_monthly.index = factors_monthly.index+pd.tseries.offsets.MonthEnd(0)
-        return factors_monthly
+        return FinancialDataFrame(factors_monthly)
 
 
 def download_industry_data(freq='D', excessreturns = True):

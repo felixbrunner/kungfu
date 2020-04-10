@@ -60,6 +60,7 @@ class FinancialSeries(pd.Series):
                            None],\
             'obstype needs to be return, price, logreturn, or characteristic'
         self.obstype = obstype
+        return self
 
 
     def to_returns(self):
@@ -584,14 +585,33 @@ class FinancialSeries(pd.Series):
         assert self.obstype in ['price','return','logreturn'],\
             'obstype needs to be price, return, or logreturn'
         returns = self.to_returns()
-        
+
         realised_volatility = ((returns**2).mean())**0.5 * np.sqrt(annual_obs)
         return realised_volatility
+
+
+    def standardise_values(self, loc=0, scale=1):
+
+        '''
+        Standardises FinancialSeries involving subtracting the mean and dividing by
+        the standard deviation.
+        '''
+
+        mu = self.mean()+loc
+        sigma = self.std()/scale
+        fs_standardised = self.subtract(mu).divide(sigma)
+        return fs_standardised
+
+
+
 
     ## # TODO:
     # estimate_factor_model
     # calculate_idiosyncratic_volatility
     # realised volatility from returns
+
+    # https://github.com/pandas-dev/pandas/pull/28573 needs to be resolved for
+    # pd.groupby to work with class methods
 
 
 

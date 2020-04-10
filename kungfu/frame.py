@@ -54,7 +54,7 @@ class FinancialDataFrame(pd.DataFrame):
             fdf.__dict__[attribute] = getattr(self, attribute)
 
 
-    def standardise_values(self, ax=0, loc=0, scale=1):
+    def standardise_values(self, axis=0, loc=0, scale=1):
 
         '''
         Standardises dataframe along input dimension.
@@ -62,13 +62,18 @@ class FinancialDataFrame(pd.DataFrame):
         standard deviation.
         '''
 
-        mus = self.mean(axis=ax)+loc
-        sigmas = self.std(axis=ax)*scale
-        fdf_standardised = self.subtract(mus, axis=ax).divide(sigmas, axis=ax)
+        mus = self.mean(axis=axis)+loc
+        sigmas = self.std(axis=axis)/scale
+
+        other_axis = int(not axis)
+
+        fdf_standardised = self.subtract(mus, axis=other_axis)\
+                               .divide(sigmas, axis=other_axis)
         return fdf_standardised
 
 
-    def export_to_latex(self, filename='financialdataframe.tex', **kwargs):
+    def export_to_latex(self, filename='financialdataframe.tex',
+                        path=None, **kwargs):
 
         '''
         Exports FinancialDataFrame to LaTex format and saves it to a tex file
@@ -77,8 +82,12 @@ class FinancialDataFrame(pd.DataFrame):
 
         if filename[-4:] != '.tex':
             filename += '.tex'
-        self.to_latex(buf=filename, multirow=False, multicolumn_format ='c',\
+        buf = path+filename
+        self.to_latex(buf=buf, multirow=False, multicolumn_format ='c',\
                         na_rep='', escape=False, **kwargs)
+
+
+
 
 
 ## TODO: needs to store FinancialSeries obstype
