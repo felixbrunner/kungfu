@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
 
+import statsmodels.api as sm
+import linearmodels as lm
+
 from kungfu.series import FinancialSeries
 
 
@@ -86,6 +89,24 @@ class FinancialDataFrame(pd.DataFrame):
         self.to_latex(buf=buf, multirow=False, multicolumn_format ='c',\
                         na_rep='', escape=False, **kwargs)
 
+
+    def fit_linear_regression(self, endog, exog, constant=True, **kwargs):
+
+        '''
+        Run an OLS regression on selected columns of the FinancialDataFrame.
+        endog and exog should be str (or list of str) to corresponding to column
+        names.
+        '''
+        
+        y = self[endog]
+        if constant:
+            X = sm.add_constant(self[exog])
+        else:
+            X = self[exog]
+
+        model = sm.OLS(y, X).fit()
+
+        return model
 
 
 
