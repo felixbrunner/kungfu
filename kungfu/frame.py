@@ -90,23 +90,48 @@ class FinancialDataFrame(pd.DataFrame):
                         na_rep='', escape=False, **kwargs)
 
 
-    def fit_linear_regression(self, endog, exog, constant=True, **kwargs):
+    def fit_linear_regression(self, endog, exog, constant=True,
+            lag=0, missing='drop', **kwargs):
 
         '''
         Run an OLS regression on selected columns of the FinancialDataFrame.
         endog and exog should be str (or list of str) to corresponding to column
         names.
+
+        TO DO: interactions
         '''
-        
+
         y = self[endog]
         if constant:
+            X = sm.add_constant(self[exog]).shift(lag)
+        else:
+            X = self[exog].shift(lag)
+        model = sm.OLS(y, X, missing=missing, **kwargs).fit()
+        return model
+
+
+    def fit_panel_regression(self, endog, exog, fixed_effects=None,
+            constant=False, **kwargs):
+
+        '''
+        Run a panel regression on selected columns of the FinancialDataFrame.
+        endog and exog should be str (or list of str) to corresponding to column
+        names.
+        fixed_effects should be a list of variables to define fixed effects.
+        constant will be automatically omitted if any fixed effects are included.
+        '''
+
+        assert type(self.index) is pd.MultiIndex, 'No panel data found, use fit_panel_regression instead'
+
+        y = self[endog]
+        if fixed_effects is None:
             X = sm.add_constant(self[exog])
         else:
             X = self[exog]
-
-        model = sm.OLS(y, X).fit()
-
+        model = lm.PanelOLS(y, X, **kwargs).fit()
         return model
+
+
 
 
 
