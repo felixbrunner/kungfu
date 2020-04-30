@@ -110,8 +110,8 @@ class FinancialDataFrame(pd.DataFrame):
         return model
 
 
-    def fit_panel_regression(self, endog, exog, fixed_effects=None,
-            constant=False, **kwargs):
+    def fit_panel_regression(self, endog, exog, fixed_effects=[], lag=0,
+            constant=True, **kwargs):
 
         '''
         Run a panel regression on selected columns of the FinancialDataFrame.
@@ -124,11 +124,16 @@ class FinancialDataFrame(pd.DataFrame):
         assert type(self.index) is pd.MultiIndex, 'No panel data found, use fit_panel_regression instead'
 
         y = self[endog]
-        if fixed_effects is None:
-            X = sm.add_constant(self[exog])
+        if fixed_effects is None and constant:
+            X = sm.add_constant(self[exog]).shift(lag)
         else:
-            X = self[exog]
-        model = lm.PanelOLS(y, X, **kwargs).fit()
+            X = self[exog].shift(lag)
+
+        entity_effects = 'entity' in fixed_effects
+        time_effects ='time' in fixed_effects
+
+        model = lm.PanelOLS(y, X, time_effects=time_effects,
+                                entity_effects=entity_effects, **kwargs).fit()
         return model
 
 
