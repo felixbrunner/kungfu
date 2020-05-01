@@ -111,23 +111,28 @@ class FinancialDataFrame(pd.DataFrame):
 
 
     def fit_panel_regression(self, endog, exog, fixed_effects=[], lag=0,
-            constant=True, **kwargs):
+            constant=True, cov_type='kernel', **kwargs):
 
         '''
         Run a panel regression on selected columns of the FinancialDataFrame.
         endog and exog should be str (or list of str) to corresponding to column
         names.
-        fixed_effects should be a list of variables to define fixed effects.
-        constant will be automatically omitted if any fixed effects are included.
+        fixed_effects should be a list of 'time' and/or 'entity' to define fixed
+        effects.
+        A constant will be automatically omitted if any fixed effects are
+        included.
+        lag defines the number of lags to use for the independent variable.
         '''
 
         assert type(self.index) is pd.MultiIndex, 'No panel data found, use fit_panel_regression instead'
 
         y = self[endog]
         if fixed_effects is None and constant:
-            X = sm.add_constant(self[exog]).shift(lag)
+            X = sm.add_constant(self[exog])\
+                .groupby(self.index.get_level_values(0)).shift(lag)
         else:
-            X = self[exog].shift(lag)
+            X = self[exog]\
+                .groupby(self.index.get_level_values(0)).shift(lag)
 
         entity_effects = 'entity' in fixed_effects
         time_effects ='time' in fixed_effects
