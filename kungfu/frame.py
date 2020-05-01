@@ -127,7 +127,7 @@ class FinancialDataFrame(pd.DataFrame):
         assert type(self.index) is pd.MultiIndex, 'No panel data found, use fit_panel_regression instead'
 
         y = self[endog]
-        if fixed_effects is [] and constant:
+        if fixed_effects==[] and constant:
             X = sm.add_constant(self[exog])\
                 .groupby(self.index.get_level_values(0)).shift(lag)
         else:
