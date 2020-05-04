@@ -124,7 +124,8 @@ class FinancialDataFrame(pd.DataFrame):
         lag defines the number of lags to use for the independent variable.
         '''
 
-        assert type(self.index) is pd.MultiIndex, 'No panel data found, use fit_panel_regression instead'
+        assert type(self.index) is pd.MultiIndex,\
+            'No panel data found, use fit_panel_regression instead'
 
         y = self[endog]
         if fixed_effects==[] and constant:

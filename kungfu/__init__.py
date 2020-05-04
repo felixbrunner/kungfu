@@ -3,3 +3,5 @@ import kungfu.dataloader as dataloader
 
 from kungfu.series import FinancialSeries
 from kungfu.frame import FinancialDataFrame
+
+from kungfu.factor import FactorModel
