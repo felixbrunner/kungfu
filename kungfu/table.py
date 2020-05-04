@@ -250,3 +250,18 @@ class RegressionTable(pd.DataFrame):
         new_order = [(var,second) for var in variable_list for second in second_level]
         top = top.reindex(new_order)
         return top.append(bottom)
+
+
+    def change_descriptive_order(self, descriptive_list):
+
+        '''
+        Puts regression variables in new order.
+        Inputs:
+        variable_list: A list of variables in desired order.
+        '''
+
+        top = self[self.index.get_level_values(1) != '']
+        bottom = self[self.index.get_level_values(1) == '']
+        new_order = [(var,'') for var in descriptive_list]
+        bottom = bottom.reindex(new_order)
+        return top.append(bottom)

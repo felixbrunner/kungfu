@@ -6,6 +6,8 @@ import statsmodels.api as sm
 
 import warnings
 
+from kungfu.frame import FinancialDataFrame
+
 
 
 
@@ -24,17 +26,18 @@ class FactorModel():
         self.assets = assets
 
 
-    def add_assets(fdf):
-        self.assets = fdf[assets]
+    def add_assets(self, asset_data):
+        self.assets = data
 
 
-    def fit():
+    def fit(self):
 
         '''
         '''
 
         assert self.assets is not None, 'add assets to fit model'
 
+        fdf_estimates = kf.FinancialDataFrame(index=self.assets)
         for asset in assets.columns[]:
 
             estimate = sm.OLS(asset, sm.add_constant(self.factors), missing=missing)\
