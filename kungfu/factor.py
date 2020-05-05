@@ -6,17 +6,19 @@ import statsmodels.api as sm
 
 import warnings
 
-from kungfu.frame import FinancialDataFrame, FinancialSeries
+from kungfu.frame import FinancialDataFrame
+from kungfu.series import FinancialSeries
 
 '''
 TO DO:
--
+- Ensure data is of obstype return
 '''
 
 
 def _prepare_asset_data(asset_data):
 
     '''
+    Returns asset timeseries data as a DataFrame in wide format.
     '''
 
     if type(asset_data.index) == pd.core.indexes.multi.MultiIndex:
@@ -36,6 +38,7 @@ def _prepare_asset_data(asset_data):
 def _prepare_factor_data(factor_data):
 
     '''
+    Returns factor timeseries data as a DataFrame in wide format.
     '''
 
     assert type(factor_data.index) == pd.core.indexes.datetimes.DatetimeIndex,\
@@ -50,6 +53,7 @@ def _prepare_factor_data(factor_data):
 def _combine_data(factor_data, asset_data):
 
     '''
+    Returns a joined DataFrame that contains aligned asset data and factor data.
     '''
 
     factor_data = _prepare_factor_data(factor_data)
@@ -64,20 +68,13 @@ def _combine_data(factor_data, asset_data):
 class FactorModel():
 
     '''
-    FactorModel class
+    FactorModel class for the estimation and testing of linear factor models as
+    in the asset pricing academic literature.
     '''
 
     def __init__(self, factor_data):
         self.factor_data = _prepare_factor_data(factor_data)
         self.factor_names = list(self.factor_data.columns)
-        #assert type(factor_data.index) == pd.core.indexes.datetimes.DatetimeIndex,\
-        #    'index of supplied data needs to be pandas.DatetimeIndex'
-
-        #self.factor_data = factor_data
-        #if type(factor_data) == pd.core.series.Series:
-        #    factor_data = factor_data.to_frame()
-
-
 
 
     def fit(self, asset_data):
@@ -158,6 +155,7 @@ class FactorModelResults():
     Class to hold factor model results:
     - alphas
     - betas
+    - pricing errors (residuals)
     '''
 
     def __init__(self, factor_names, asset_names, timeline):
@@ -172,7 +170,7 @@ class FactorModelResults():
     def get_estimates(self):
 
         '''
-        Returns parameter estimates of FactorModelResults
+        Returns parameter estimates of FactorModelResults as a DataFrame.
         '''
 
         estimates = self.alphas.to_frame().merge(self.betas, how='outer',

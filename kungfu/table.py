@@ -4,7 +4,7 @@ import statsmodels.api as sm
 import linearmodels as lm
 
 
-def create_statsmodels_summary_column(regression, t_stats=True, add_outputs=[]):
+def _create_statsmodels_summary_column(regression, t_stats=True, add_outputs=[]):
 
     '''
     Creates a pandas series object that contains the formatted results
@@ -68,7 +68,7 @@ def create_statsmodels_summary_column(regression, t_stats=True, add_outputs=[]):
     return summary
 
 
-def create_linearmodels_summary_column(regression, t_stats=True, add_outputs=[]):
+def _create_linearmodels_summary_column(regression, t_stats=True, add_outputs=[]):
 
     '''
     Creates a pandas series object that contains the formatted results
@@ -168,9 +168,9 @@ class RegressionTable(pd.DataFrame):
 
         self._nregs += 1
         if type(regression_model) is sm.regression.linear_model.RegressionResultsWrapper:
-            column = create_statsmodels_summary_column(regression_model, **kwargs).rename('('+str(self._nregs)+')')
+            column = _create_statsmodels_summary_column(regression_model, **kwargs).rename('('+str(self._nregs)+')')
         elif type(regression_model) is lm.panel.results.PanelEffectsResults:
-            column = create_linearmodels_summary_column(regression_model, **kwargs).rename('('+str(self._nregs)+')')
+            column = _create_linearmodels_summary_column(regression_model, **kwargs).rename('('+str(self._nregs)+')')
         joined_table = self.join(column, how='outer', sort=False)\
                            .replace(np.nan,'')
         top = joined_table[joined_table.index.get_level_values(1) != '']

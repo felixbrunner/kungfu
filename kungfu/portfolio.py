@@ -5,8 +5,11 @@ import matplotlib.pyplot as plt
 
 from kungfu.frame import FinancialDataFrame
 
-# # TODO: write class to use tidy frames
-# Output table class
+'''
+TO DO:
+- write class to use tidy frames
+- Output table class
+'''
 
 
 def _generate_portfolio_index(sort_names, n_portfolios):

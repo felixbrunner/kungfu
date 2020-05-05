@@ -10,8 +10,8 @@ from kungfu.series import FinancialSeries
 class FinancialDataFrame(pd.DataFrame):
 
     '''
-    A Financial Data Frame is a pandas DataFrame that contains financial
-    observations.
+    A Financial Data Frame is an extension of a pandas DataFrame that contains
+    financial observations.
     '''
 
     _attributes_ = "obstypes"
@@ -142,6 +142,9 @@ class FinancialDataFrame(pd.DataFrame):
                             entity_effects=entity_effects, **kwargs)\
                             .fit(cov_type=cov_type)
         return model
+
+
+    #def sort_portfolios(returns, ranking_variable, n_portfolios, lags=1, return_assets=False):
 
 
 
