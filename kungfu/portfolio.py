@@ -3,8 +3,55 @@ import scipy as sp
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from kungfu.frame import FinancialDataFrame
+
 # # TODO: write class to use tidy frames
 # Output table class
+
+
+def _generate_portfolio_index(sort_names, n_portfolios):
+
+    '''
+    Returns a pandas Index or MultiIndex object that contains the names of
+    sorted portfolios.
+    '''
+
+    if type(n_portfolios) == int:
+        n_portfolios = [a for i in range(0,len(sort_names))]
+
+    assert len(sort_names) == len(list(n_portfolios)),\
+        'sort_names and n_portfolios length mismatch'
+
+    univariate_indices = []
+    for sort,n in zip(sort_names,n_portfolios):
+        univariate_indices += [[sort+'_low']\
+                +[sort+'_'+str(i) for i in range(2,n)]\
+                +[sort+'_high']]
+
+    if len(sort_names) == 1:
+        return pd.Index(univariate_indices[0])
+    else:
+        return pd.MultiIndex.from_product(univariate_indices)
+
+
+
+class PortfolioSortResults():
+
+    '''
+    '''
+
+    def __init__(self, asset_names, sort_names, timeline, n_portfolios):
+        portfolio_index = _generate_portfolio_names(sort_names, n_portfolios)
+
+        self.portfolio_returns = FinancialDataFrame(index=timeline,
+                    columns=portfolio_index)
+        self.portfolio_assets = FinancialDataFrame(index=timeline,
+                    columns=portfolio_index)
+        self.portfolio_mapping = FinancialDataFrame(index=timeline,
+                    columns=asset_names)
+
+
+
 
 
 

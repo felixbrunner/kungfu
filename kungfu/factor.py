@@ -52,6 +52,9 @@ def _combine_data(factor_data, asset_data):
     '''
     '''
 
+    factor_data = _prepare_factor_data(factor_data)
+    asset_data = _prepare_asset_data(asset_data)
+
     combined_data = asset_data.merge(factor_data, how='left',
                     left_index=True, right_index=True)
 
