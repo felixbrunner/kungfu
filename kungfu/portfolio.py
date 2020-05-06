@@ -87,7 +87,10 @@ def _bin_simultaneously(sorting_data, n_sorts):
             .apply(lambda x: pd.cut(x, n, labels=False)+1)
 
     # output series
-    portfolio_bins = FinancialSeries(sorting_data.apply(tuple, axis=1),
+    if len(sort_names) == 1:
+        portfolio_bins = sorting_data.squeeze()
+    else:
+        portfolio_bins = FinancialSeries(sorting_data.apply(tuple, axis=1),
                         name=portfolio_name)
     return portfolio_bins
 
@@ -113,7 +116,10 @@ def _bin_sequentially(sorting_data, n_sorts):
         grouper += [list(sorting_data[sort].values)]
 
     # output series
-    portfolio_bins = FinancialSeries(sorting_data.apply(tuple, axis=1),
+    if len(sort_names) == 1:
+        portfolio_bins = sorting_data.squeeze()
+    else:
+        portfolio_bins = FinancialSeries(sorting_data.apply(tuple, axis=1),
                         name=portfolio_name)
     return portfolio_bins
 
@@ -161,6 +167,8 @@ def sort_portfolios(return_data, sorting_data, n_sorts=10, lag=1,
                 method='simultaneous', **kwargs):
 
     '''
+    Sort returns into portfolios based on one or more sorting variables.
+    Method can be simultaneous or sequential.
 
     TO DO:
     - flexible weights (eg value-weighted)
@@ -186,12 +194,10 @@ def sort_portfolios(return_data, sorting_data, n_sorts=10, lag=1,
     # create outputs
     results = PortfolioSortResults()
     results.portfolio_mapping = portfolio_bins
-    grouper = [list(merged_data.index.get_level_values(1)),list(merged_data.iloc[:,1].values)]
+    grouper = [list(merged_data.index.get_level_values(1)),list(merged_data.iloc[:,1])]
     results.portfolio_size = merged_data.iloc[:,1]\
                                     .groupby(grouper).count()
     results.portfolio_returns = merged_data.iloc[:,0]\
                                     .groupby(grouper).mean()
 
     return results
-
-    

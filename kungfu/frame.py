@@ -6,6 +6,13 @@ import linearmodels as lm
 
 from kungfu.series import FinancialSeries
 
+'''
+TO DO:
+- needs to store FinancialSeries obstype
+- make series methods available
+- Calculate GRS test on factormodel class
+'''
+
 
 class FinancialDataFrame(pd.DataFrame):
 
@@ -144,14 +151,19 @@ class FinancialDataFrame(pd.DataFrame):
         return model
 
 
-    #def sort_portfolios(returns, ranking_variable, n_portfolios, lags=1, return_assets=False):
+    def sort_portfolios(self, return_column, sorting_columns, n_sorts=10, lag=1,
+                    method='simultaneous', **kwargs):
 
+        '''
+        Sort returns into portfolios based on one or more sorting variables.
+        Method can be simultaneous or sequential.
+        '''
 
+        import kungfu.portfolio as pf
 
+        return_data = self[return_column]
+        sorting_data = self[sorting_columns]
 
-
-
-## TODO: needs to store FinancialSeries obstype
-## make series methods available
-
-## Calculate GRS test on factormodel class
+        results = pf.sort_portfolios(return_data, sorting_data,
+                        n_sorts=n_sorts, lag=lag,  method=method, **kwargs)
+        return results
