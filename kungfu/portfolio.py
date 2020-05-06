@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from kungfu.frame import FinancialDataFrame
+from kungfu.series import FinancialSeries
 
 '''
 TO DO:
@@ -12,21 +13,21 @@ TO DO:
 '''
 
 
-def _generate_portfolio_index(sort_names, n_portfolios):
+def _generate_portfolio_index(sort_names, n_sorts):
 
     '''
     Returns a pandas Index or MultiIndex object that contains the names of
     sorted portfolios.
     '''
 
-    if type(n_portfolios) == int:
-        n_portfolios = [a for i in range(0,len(sort_names))]
+    if type(n_sorts) == int:
+        n_sorts = [a for i in range(0,len(sort_names))]
 
-    assert len(sort_names) == len(list(n_portfolios)),\
+    assert len(sort_names) == len(list(n_sorts)),\
         'sort_names and n_portfolios length mismatch'
 
     univariate_indices = []
-    for sort,n in zip(sort_names,n_portfolios):
+    for sort,n in zip(sort_names,n_sorts):
         univariate_indices += [[sort+'_low']\
                 +[sort+'_'+str(i) for i in range(2,n)]\
                 +[sort+'_high']]
@@ -37,123 +38,160 @@ def _generate_portfolio_index(sort_names, n_portfolios):
         return pd.MultiIndex.from_product(univariate_indices)
 
 
+def _prepare_return_data(return_data):
+
+    '''
+    Returns return data in long format DataFrame.
+    '''
+
+    if type(return_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
+        return_data = return_data.stack()
+
+    return FinancialDataFrame(return_data)
+
+
+def _prepare_sorting_data(sorting_data):
+
+    '''
+    Returns sorting data in long format DataFrame.
+    Drops missing observations.
+    '''
+
+    if type(sorting_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
+        sorting_data = sorting_data.stack().to_frame()
+
+    assert type(sorting_data.index) == pd.core.indexes.multi.MultiIndex,\
+        'Need to supply panel data as sorting variable'
+
+    sorting_data = sorting_data.dropna()
+    return FinancialDataFrame(sorting_data)
+
+
+def _bin_simultaneously(sorting_data, n_sorts):
+
+    '''
+    Returns a FinancialSeries of portfolio mappings resulting from simultaneous
+    sorting.
+    '''
+
+    # prepare
+    sort_names = list(sorting_data.columns)
+    portfolio_name = ', '.join(sort_names)
+
+    # create bins
+    for sort, n in zip(sort_names, n_sorts):
+        sorting_data[sort] = sorting_data[sort]\
+            .groupby(sorting_data.index.get_level_values(1))\
+            .rank()\
+            .groupby(sorting_data.index.get_level_values(1))\
+            .apply(lambda x: pd.cut(x, n, labels=False)+1)
+
+    # output series
+    portfolio_bins = FinancialSeries(sorting_data.apply(tuple, axis=1),
+                        name=portfolio_name)
+    return portfolio_bins
+
+
+def _bin_sequentially(sorting_data, n_sorts):
+
+    '''
+    Returns a FinancialSeries of portfolio mappings resulting from sequential sorting.
+    '''
+
+    # prepare
+    sort_names = list(sorting_data.columns)
+    portfolio_name = ', '.join(sort_names)
+
+    # create bins
+    grouper = [list(sorting_data.index.get_level_values(1))]
+    for sort, n in zip(sort_names, n_sorts):
+        sorting_data[sort] = sorting_data[sort]\
+            .groupby(grouper)\
+            .rank()\
+            .groupby(grouper)\
+            .apply(lambda x: pd.cut(x, n, labels=False)+1)
+        grouper += [list(sorting_data[sort].values)]
+
+    # output series
+    portfolio_bins = FinancialSeries(sorting_data.apply(tuple, axis=1),
+                        name=portfolio_name)
+    return portfolio_bins
+
+
+def _merge_data_for_portfolios(return_data, portfolio_bins, lag, **kwargs):
+
+    '''
+    Returns a joined DataFrame that contains aligned return data and sorting
+    data.
+    '''
+
+    bins_name = portfolio_bins.name
+
+    # merge
+    merged_data = return_data\
+                        .merge(portfolio_bins, how='left',
+                            left_index=True, right_on=portfolio_bins.index.names)
+
+    # lag & forward fill
+    merged_data[bins_name] = merged_data[bins_name]\
+                                .groupby(merged_data.index.get_level_values(0))\
+                                .shift(lag)\
+                                .groupby(merged_data.index.get_level_values(0))\
+                                .fillna(method='ffill', **kwargs)
+
+    return merged_data
+
+
 
 class PortfolioSortResults():
 
     '''
     '''
 
-    def __init__(self, asset_names, sort_names, timeline, n_portfolios):
-        portfolio_index = _generate_portfolio_names(sort_names, n_portfolios)
+    def __init__(self):#, asset_names, sort_names, timeline, n_portfolios):
+        #portfolio_index = _generate_portfolio_names(sort_names, n_portfolios)
 
-        self.portfolio_returns = FinancialDataFrame(index=timeline,
-                    columns=portfolio_index)
-        self.portfolio_assets = FinancialDataFrame(index=timeline,
-                    columns=portfolio_index)
-        self.portfolio_mapping = FinancialDataFrame(index=timeline,
-                    columns=asset_names)
+        self.portfolio_returns = None#FinancialDataFrame(index=timeline, columns=portfolio_index)
+        self.portfolio_size = None#FinancialDataFrame(index=timeline, columns=portfolio_index)
+        self.portfolio_mapping = None#FinancialDataFrame(index=timeline, columns=asset_names)
 
 
 
+def sort_portfolios(return_data, sorting_data, n_sorts=10, lag=1,
+                method='simultaneous', **kwargs):
 
+    '''
 
+    TO DO:
+    - flexible weights (eg value-weighted)
+    '''
 
-def sort_portfolios(returns, ranking_variable, n_portfolios, lags=1, return_assets=False):
-    # align periods
-    sorting_variable = ranking_variable.shift(lags)
+    assert method in ['simultaneous', 'sequential'],\
+        'method needs to be either simultaneous or sequential'
 
-    # set up parameters
-    [t,n] = returns.shape
-    include = returns.notna() & sorting_variable.notna()
-    n_period = include.sum(axis=1)
+    return_data = _prepare_return_data(return_data)
+    sorting_data = _prepare_sorting_data(sorting_data)
+    if type(n_sorts) == int:
+        n_sorts = [n_sorts for col in sorting_data.columns]
 
-    # sort assets
-    returns_include = returns[include]
-    sorting_variable[~include] = np.nan
-    cutoff_ranks = np.dot(n_period.values.reshape(t,1)/n_portfolios,np.arange(n_portfolios+1).reshape(1,n_portfolios+1)).round()
-    asset_ranks = sorting_variable.rank(axis=1)
+    if method is 'simultaneous':
+        portfolio_bins = _bin_simultaneously(sorting_data, n_sorts)
+    elif method is 'sequential':
+        portfolio_bins = _bin_sequentially(sorting_data, n_sorts)
 
-    # set up output frames
-    portfolio_returns = pd.DataFrame(index=returns.index,columns=range(1,n_portfolios+1))
-    portfolio_assets = pd.DataFrame(index=returns.index,columns=range(1,n_portfolios+1))
-    portfolio_mapping = pd.DataFrame(index=returns.index, columns=returns.columns)
+    # merge
+    merged_data = _merge_data_for_portfolios(return_data,
+                                        portfolio_bins, lag, **kwargs)
 
-    # calculate outputs
-    for i_portfolio in range(0,n_portfolios):
-        lower = cutoff_ranks[:,i_portfolio].reshape(t,1).repeat(n, axis=1)
-        upper = cutoff_ranks[:,i_portfolio+1].reshape(t,1).repeat(n, axis=1)
-        portfolio_returns[i_portfolio+1] = returns_include[(asset_ranks>lower) & (asset_ranks<=upper)].mean(axis=1)
-        portfolio_assets[i_portfolio+1] = ((asset_ranks>lower) & (asset_ranks<=upper)).sum(axis=1)
-        portfolio_mapping[(asset_ranks>lower) & (asset_ranks<=upper)] = i_portfolio
+    # create outputs
+    results = PortfolioSortResults()
+    results.portfolio_mapping = portfolio_bins
+    grouper = [list(merged_data.index.get_level_values(1)),list(merged_data.iloc[:,1].values)]
+    results.portfolio_size = merged_data.iloc[:,1]\
+                                    .groupby(grouper).count()
+    results.portfolio_returns = merged_data.iloc[:,0]\
+                                    .groupby(grouper).mean()
 
-    # outputs
-    if return_assets == False:
-        return portfolio_returns
-    else:
-        return portfolio_returns, portfolio_assets, portfolio_mapping
+    return results
 
-
-
-def double_sort_portfolios(returns, ranking_variable_1, ranking_variable_2, n_portfolios_1, n_portfolios_2, lags_1=1, lags_2=1, return_assets=False):
-    # identify missing values
-    exclude = returns.isna() | ranking_variable_1.shift(lags_1).isna() | ranking_variable_2.shift(lags_2).isna()
-    returns[exclude] = np.nan
-
-    # first sort
-    portfolio_mapping_1 = sort_portfolios(returns, ranking_variable_1, n_portfolios_1, lags_1, return_assets=True)[2]
-
-    # second sorts
-    portfolio_mapping_2 = pd.DataFrame(0, index=portfolio_mapping_1.index, columns=portfolio_mapping_1.columns)
-    for i_portfolio_2 in range(0,n_portfolios_2):
-        subportfolio_returns = returns[portfolio_mapping_1 == i_portfolio_2]
-        portfolio_mapping_2 += (sort_portfolios(subportfolio_returns, ranking_variable_2, n_portfolios_2, lags_2, return_assets=True)[2]).fillna(0)
-    portfolio_mapping_2[exclude] = np.nan
-
-    # combined sort
-    portfolio_mapping = portfolio_mapping_1*n_portfolios_1 + portfolio_mapping_2
-
-    # set up output frames
-    portfolio_returns = pd.DataFrame(index=returns.index,columns=[str(i_portfolio_1+1)+','+str(i_portfolio_2+1) for i_portfolio_1 in range(0,n_portfolios_1) for i_portfolio_2 in range(0,n_portfolios_2)])
-    portfolio_assets = pd.DataFrame(index=returns.index,columns=[str(i_portfolio_1+1)+','+str(i_portfolio_2+1) for i_portfolio_1 in range(0,n_portfolios_1) for i_portfolio_2 in range(0,n_portfolios_2)])
-
-    # calculate outputs
-    for i_portfolio_all in range(0,n_portfolios_1*n_portfolios_2):
-        portfolio_returns.iloc[:,i_portfolio_all] = returns[portfolio_mapping == i_portfolio_all].mean(axis=1)
-        portfolio_assets.iloc[:,i_portfolio_all] = (portfolio_mapping == i_portfolio_all).sum(axis=1)
-
-    # outputs
-    if return_assets == False:
-        return portfolio_returns
-    else:
-        return portfolio_returns, portfolio_assets, portfolio_mapping
-
-
-
-def double_sort_portfolios_simultaneously(returns, ranking_variable_1, ranking_variable_2, n_portfolios_1, n_portfolios_2, lags_1=1, lags_2=1, return_assets=False):
-    # identify missing values
-    exclude = returns.isna() | ranking_variable_1.shift(lags_1).isna() | ranking_variable_2.shift(lags_2).isna()
-    returns[exclude] = np.nan
-
-    # first sort
-    portfolio_mapping_1 = sort_portfolios(returns, ranking_variable_1, n_portfolios_1, lags_1, return_assets=True)[2]
-
-    # second sorts
-    portfolio_mapping_2 = sort_portfolios(returns, ranking_variable_2, n_portfolios_2, lags_2, return_assets=True)[2]
-
-    # combined sort
-    portfolio_mapping = portfolio_mapping_1*n_portfolios_1 + portfolio_mapping_2
-
-    # set up output frames
-    portfolio_returns = pd.DataFrame(index=returns.index,columns=[str(i_portfolio_1+1)+','+str(i_portfolio_2+1) for i_portfolio_1 in range(0,n_portfolios_1) for i_portfolio_2 in range(0,n_portfolios_2)])
-    portfolio_assets = pd.DataFrame(index=returns.index,columns=[str(i_portfolio_1+1)+','+str(i_portfolio_2+1) for i_portfolio_1 in range(0,n_portfolios_1) for i_portfolio_2 in range(0,n_portfolios_2)])
-
-    # calculate outputs
-    for i_portfolio_all in range(0,n_portfolios_1*n_portfolios_2):
-        portfolio_returns.iloc[:,i_portfolio_all] = returns[portfolio_mapping == i_portfolio_all].mean(axis=1)
-        portfolio_assets.iloc[:,i_portfolio_all] = (portfolio_mapping == i_portfolio_all).sum(axis=1)
-
-    # outputs
-    if return_assets == False:
-        return portfolio_returns
-    else:
-        return portfolio_returns, portfolio_assets, portfolio_mapping
+    
