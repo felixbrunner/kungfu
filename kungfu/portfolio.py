@@ -152,14 +152,13 @@ def _merge_data_for_portfolios(return_data, portfolio_bins, lag, **kwargs):
 class PortfolioSortResults():
 
     '''
+    Class to hold results of portfolio sorts
     '''
 
-    def __init__(self):#, asset_names, sort_names, timeline, n_portfolios):
-        #portfolio_index = _generate_portfolio_names(sort_names, n_portfolios)
-
-        self.portfolio_returns = None#FinancialDataFrame(index=timeline, columns=portfolio_index)
-        self.portfolio_size = None#FinancialDataFrame(index=timeline, columns=portfolio_index)
-        self.portfolio_mapping = None#FinancialDataFrame(index=timeline, columns=asset_names)
+    def __init__(self):
+        self.returns = None
+        self.size = None
+        self.mapping = None
 
 
 
@@ -193,11 +192,11 @@ def sort_portfolios(return_data, sorting_data, n_sorts=10, lag=1,
 
     # create outputs
     results = PortfolioSortResults()
-    results.portfolio_mapping = portfolio_bins
+    results.mapping = portfolio_bins
     grouper = [list(merged_data.index.get_level_values(1)),list(merged_data.iloc[:,1])]
-    results.portfolio_size = merged_data.iloc[:,1]\
+    results.size = merged_data.iloc[:,1]\
                                     .groupby(grouper).count()
-    results.portfolio_returns = merged_data.iloc[:,0]\
+    results.returns = merged_data.iloc[:,0]\
                                     .groupby(grouper).mean()
 
     return results

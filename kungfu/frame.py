@@ -167,3 +167,5 @@ class FinancialDataFrame(pd.DataFrame):
         results = pf.sort_portfolios(return_data, sorting_data,
                         n_sorts=n_sorts, lag=lag,  method=method, **kwargs)
         return results
+
+        

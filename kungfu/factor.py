@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 
 import statsmodels.api as sm
+import matplotlib.pyplot as plt
 
 import warnings
 
@@ -80,7 +81,7 @@ class FactorModel():
     def fit(self, asset_data):
 
         '''
-        Fit method
+        Fit the factor model to a set of assets and return the results.
         '''
 
         asset_data = _prepare_asset_data(asset_data)
@@ -99,6 +100,8 @@ class FactorModel():
             results.alphas.at[asset] = estimate.params['const']
             results.betas.loc[asset,self.factor_names] = estimate.params[self.factor_names].values
             results.residuals.loc[:,asset] = estimate.resid.values
+            results.asset_means = asset_data.mean()
+            results.factor_means = self.factor_data.mean()
 
         return results
 
@@ -118,7 +121,6 @@ class FactorModel():
         '''
 
         asset_data = _prepare_asset_data(asset_data)
-        #asset_names = list(asset_data.columns)
 
         # dimensions
         T = len(asset_data)
@@ -132,7 +134,6 @@ class FactorModel():
         # timeseries regressions
         ts_regressions = self.fit(asset_data)
         alphas = np.matrix(ts_regressions.alphas).T
-        #betas = ts_regressions.betas
         residuals = ts_regressions.residuals
 
         # asset VCV
@@ -165,6 +166,8 @@ class FactorModelResults():
         self.alphas = FinancialSeries(index=asset_names, name='alpha')
         self.betas = FinancialDataFrame(index=asset_names, columns=self.factor_names)
         self.residuals = FinancialDataFrame(index=timeline, columns=asset_names)
+        self.asset_means = None
+        self.factor_means = None
 
 
     def get_estimates(self):
@@ -173,6 +176,44 @@ class FactorModelResults():
         Returns parameter estimates of FactorModelResults as a DataFrame.
         '''
 
-        estimates = self.alphas.to_frame().merge(self.betas, how='outer',
-                        left_index=True, right_index=True)
+        estimates = self.alphas.to_frame()\
+                        .merge(self.betas, how='outer',
+                            left_index=True, right_index=True)
         return estimates
+
+
+    def calculate_expected_returns(self, annual_obs=1):
+
+        '''
+        Returns expected returns from the factor model estimates.
+        '''
+
+        expected_returns = self.betas.multiply(self.factor_means)*annual_obs
+        return expected_returns
+
+
+    def plot_predictions(self, annual_obs=1, **kwargs):
+
+        '''
+        Plots the factor model's predictions against the realisations in the
+        sample together with the 45-degree line.
+        '''
+
+        expected_returns = self.calculate_expected_returns(annual_obs)
+
+        fig, ax = plt.subplots(1, 1)
+
+        ax.scatter(self.asset_means*annual_obs, expected_returns,
+                    label='Test assets',
+                    marker='x')
+        limits = (max(ax.get_xlim()[0],ax.get_ylim()[0]),\
+                  min(ax.get_xlim()[1],ax.get_ylim()[1]))
+        ax.plot(limits, limits,
+                    clip_on=True, scalex=False, scaley=False,
+                    label='45° Line',
+                    c='k', linewidth=1, linestyle=':')
+        ax.set_xlabel('Expected Return')
+        ax.set_ylabel('Realised Return')
+        ax.legend(loc='lower right')
+
+        return fig
