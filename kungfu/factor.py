@@ -91,6 +91,8 @@ class FactorModel():
 
         results = FactorModelResults(self.factor_names, asset_names,
                                         data.index)
+        results.asset_means = asset_data.mean()
+        results.factor_means = self.factor_data.mean()
 
         for asset in asset_names:
             estimate = sm.OLS(data[asset],
@@ -100,8 +102,7 @@ class FactorModel():
             results.alphas.at[asset] = estimate.params['const']
             results.betas.loc[asset,self.factor_names] = estimate.params[self.factor_names].values
             results.residuals.loc[:,asset] = estimate.resid.values
-            results.asset_means = asset_data.mean()
-            results.factor_means = self.factor_data.mean()
+            results.idiosyncratic_volas.at[asset] = estimate.mse_resid**0.5
 
         return results
 
@@ -166,6 +167,8 @@ class FactorModelResults():
         self.alphas = FinancialSeries(index=asset_names, name='alpha')
         self.betas = FinancialDataFrame(index=asset_names, columns=self.factor_names)
         self.residuals = FinancialDataFrame(index=timeline, columns=asset_names)
+        self.idiosyncratic_volas = FinancialSeries(index=asset_names,
+                                                name='idiosyncratic_volatility')
         self.asset_means = None
         self.factor_means = None
 

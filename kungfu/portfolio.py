@@ -199,4 +199,13 @@ def sort_portfolios(return_data, sorting_data, n_sorts=10, lag=1,
     results.returns = merged_data.iloc[:,0]\
                                     .groupby(grouper).mean()
 
+    if results.returns.index.get_level_values(1).dtype == 'float':
+        results.size.index = pd.MultiIndex.from_arrays(\
+                [results.size.index.get_level_values(0),\
+                 results.size.index.get_level_values(1).astype(int)])
+        results.returns.index = pd.MultiIndex.from_arrays(\
+                [results.returns.index.get_level_values(0),\
+                 results.returns.index.get_level_values(1).astype(int)])
+
+
     return results
