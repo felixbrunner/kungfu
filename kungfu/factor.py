@@ -100,9 +100,14 @@ class FactorModel():
                             missing='drop')\
                         .fit()
             results.alphas.at[asset] = estimate.params['const']
-            results.betas.loc[asset,self.factor_names] = estimate.params[self.factor_names].values
+            results.alphas_se.at[asset] = estimate.bse['const']
+            results.betas.loc[asset,self.factor_names] = \
+                                    estimate.params[self.factor_names].values
+            results.betas_se.loc[asset,self.factor_names] = \
+                                    estimate.bse[self.factor_names].values
             results.residuals.loc[:,asset] = estimate.resid.values
             results.idiosyncratic_volas.at[asset] = estimate.mse_resid**0.5
+            results.r_squares.at[asset] = estimate.rsquared
 
         return results
 
@@ -165,10 +170,13 @@ class FactorModelResults():
         self.asset_names = asset_names
         self.timeline = timeline
         self.alphas = FinancialSeries(index=asset_names, name='alpha')
+        self.alphas_se = FinancialSeries(index=asset_names, name='alpha_se')
         self.betas = FinancialDataFrame(index=asset_names, columns=self.factor_names)
+        self.betas_se = FinancialDataFrame(index=asset_names, columns=self.factor_names)
         self.residuals = FinancialDataFrame(index=timeline, columns=asset_names)
         self.idiosyncratic_volas = FinancialSeries(index=asset_names,
                                                 name='idiosyncratic_volatility')
+        self.r_squares = FinancialSeries(index=asset_names, name='r_squared')
         self.asset_means = None
         self.factor_means = None
 
@@ -191,7 +199,8 @@ class FactorModelResults():
         Returns expected returns from the factor model estimates.
         '''
 
-        expected_returns = self.betas.multiply(self.factor_means)*annual_obs
+        expected_returns = self.betas\
+                            .multiply(self.factor_means).sum(axis=1)*annual_obs
         return expected_returns
 
 
@@ -206,7 +215,7 @@ class FactorModelResults():
 
         fig, ax = plt.subplots(1, 1)
 
-        ax.scatter(self.asset_means*annual_obs, expected_returns,
+        ax.scatter(expected_returns, self.asset_means*annual_obs,
                     label='Test assets',
                     marker='x')
         limits = (max(ax.get_xlim()[0],ax.get_ylim()[0]),\

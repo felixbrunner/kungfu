@@ -9,6 +9,7 @@ from kungfu.series import FinancialSeries
 '''
 TO DO:
 - Output table class
+- Output plots
 - assert datetime
 - weighted portfolio function
 - long_short_potfolio function
@@ -82,7 +83,7 @@ def _prepare_weighting_data(weighting_data):
     assert type(weighting_data.index) == pd.core.indexes.multi.MultiIndex,\
         'Need to supply panel data as sorting variable'
 
-    weighting_data = FinancialDataFrame(weighting_data).dropna().sort_index()
+    weighting_data = FinancialSeries(weighting_data).dropna().sort_index()
     return weighting_data
 
 
@@ -228,3 +229,60 @@ def sort_portfolios(return_data, sorting_data, n_sorts=10, lag=1,
 
 
     return results
+
+
+def create_index(return_data, weighting_data=None, lag=0, **kwargs):
+
+    '''
+
+    '''
+
+    return_data = _prepare_return_data(return_data)
+
+    # case without variable weights
+    if weighting_data is None:# or weighting_data in ['equal','equally']:
+        index_returns = FinancialSeries(return_data\
+                                .groupby(return_data.index.get_level_values(1))\
+                                .mean(), name='equally_weighted_index')
+        '''weighting_data = FinancialSeries(1,\
+                            index=return_data.index, name='equal_weights')'''
+
+    # case with variable weights
+    else:
+        weighting_data = _prepare_weighting_data(weighting_data)
+
+        # merge + dropna
+        merged_data = _merge_data_for_index(return_data, weighting_data, lag, **kwargs)
+
+        #returns = product
+        index_returns = merged_data.prod(axis=1)\
+                        .groupby(merged_data.index.get_level_values(1))\
+                        .sum()
+
+    return index_returns
+
+
+def _merge_data_for_index(return_data, weighting_data, lag, **kwargs):
+
+    '''
+    Returns a joined DataFrame that contains aligned return data and weighting
+    data.
+    '''
+
+    weights_name = weighting_data.name
+
+    # merge
+    merged_data = FinancialDataFrame(return_data)\
+                        .merge(weighting_data, how='left',
+                            left_index=True, right_on=weighting_data.index.names)
+
+    # lag & forward fill & scale
+    merged_data[weights_name] = merged_data[weights_name]\
+                                .groupby(merged_data.index.get_level_values(0))\
+                                .apply(lambda x: x.shift(lag)\
+                                            .fillna(method='ffill', **kwargs))\
+                                .groupby(merged_data.index.get_level_values(1))\
+                                .apply(lambda x: x.divide(x.sum()))
+    merged_data = merged_data.dropna()
+
+    return merged_data
