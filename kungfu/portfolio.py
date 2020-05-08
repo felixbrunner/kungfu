@@ -8,8 +8,10 @@ from kungfu.series import FinancialSeries
 
 '''
 TO DO:
-- write class to use tidy frames
 - Output table class
+- assert datetime
+- weighted portfolio function
+- long_short_potfolio function
 '''
 
 
@@ -45,9 +47,9 @@ def _prepare_return_data(return_data):
     '''
 
     if type(return_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
-        return_data = return_data.stack()
+        return_data = FinancialDataFrame(return_data).stack().sort_index()
 
-    return FinancialDataFrame(return_data)
+    return return_data
 
 
 def _prepare_sorting_data(sorting_data):
@@ -63,8 +65,25 @@ def _prepare_sorting_data(sorting_data):
     assert type(sorting_data.index) == pd.core.indexes.multi.MultiIndex,\
         'Need to supply panel data as sorting variable'
 
-    sorting_data = sorting_data.dropna()
-    return FinancialDataFrame(sorting_data)
+    sorting_data = FinancialDataFrame(sorting_data).dropna().sort_index()
+    return sorting_data
+
+
+def _prepare_weighting_data(weighting_data):
+
+    '''
+    Returns weighting data in long format DataFrame.
+    Drops missing observations.
+    '''
+
+    if type(weighting_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
+        weighting_data = weighting_data.stack().to_frame()
+
+    assert type(weighting_data.index) == pd.core.indexes.multi.MultiIndex,\
+        'Need to supply panel data as sorting variable'
+
+    weighting_data = FinancialDataFrame(weighting_data).dropna().sort_index()
+    return weighting_data
 
 
 def _bin_simultaneously(sorting_data, n_sorts):
