@@ -11,7 +11,6 @@ TO DO:
 - Output table class
 - Output plots
 - assert datetime
-- weighted portfolio function
 - long_short_potfolio function
 '''
 
@@ -47,9 +46,12 @@ def _prepare_return_data(return_data):
     Returns return data in long format DataFrame.
     '''
 
-    if type(return_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
-        return_data = FinancialDataFrame(return_data).stack().sort_index()
+    return_data = FinancialDataFrame(return_data)
 
+    if type(return_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
+        return_data = return_data.stack().to_frame()
+
+    return_data = return_data.sort_index()
     return return_data
 
 
@@ -61,7 +63,7 @@ def _prepare_sorting_data(sorting_data):
     '''
 
     if type(sorting_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
-        sorting_data = sorting_data.stack().to_frame()
+        sorting_data = sorting_data.stack()#.to_frame()
 
     assert type(sorting_data.index) == pd.core.indexes.multi.MultiIndex,\
         'Need to supply panel data as sorting variable'
@@ -78,7 +80,7 @@ def _prepare_weighting_data(weighting_data):
     '''
 
     if type(weighting_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
-        weighting_data = weighting_data.stack().to_frame()
+        weighting_data = weighting_data.stack()#.to_frame()
 
     assert type(weighting_data.index) == pd.core.indexes.multi.MultiIndex,\
         'Need to supply panel data as sorting variable'
@@ -102,17 +104,15 @@ def _bin_simultaneously(sorting_data, n_sorts):
     for sort, n in zip(sort_names, n_sorts):
         sorting_data[sort] = sorting_data[sort]\
             .groupby(sorting_data.index.get_level_values(1))\
-            .rank()\
-            .groupby(sorting_data.index.get_level_values(1))\
-            .apply(lambda x: pd.cut(x, n, labels=False)+1)
+            .apply(lambda x: pd.cut(x.rank(), n, labels=False)+1)
 
     # output series
     if len(sort_names) == 1:
         portfolio_bins = sorting_data.squeeze()
     else:
-        portfolio_bins = FinancialSeries(sorting_data.apply(tuple, axis=1),
-                        name=portfolio_name)
-    return portfolio_bins
+        portfolio_bins = sorting_data.apply(tuple, axis=1)
+
+    return FinancialSeries(portfolio_bins, name=portfolio_name)
 
 
 def _bin_sequentially(sorting_data, n_sorts):
@@ -130,18 +130,16 @@ def _bin_sequentially(sorting_data, n_sorts):
     for sort, n in zip(sort_names, n_sorts):
         sorting_data[sort] = sorting_data[sort]\
             .groupby(grouper)\
-            .rank()\
-            .groupby(grouper)\
-            .apply(lambda x: pd.cut(x, n, labels=False)+1)
+            .apply(lambda x: pd.cut(x.rank(), n, labels=False)+1)
         grouper += [list(sorting_data[sort].values)]
 
     # output series
     if len(sort_names) == 1:
         portfolio_bins = sorting_data.squeeze()
     else:
-        portfolio_bins = FinancialSeries(sorting_data.apply(tuple, axis=1),
-                        name=portfolio_name)
-    return portfolio_bins
+        portfolio_bins = sorting_data.apply(tuple, axis=1)
+
+    return FinancialSeries(portfolio_bins, name=portfolio_name)
 
 
 def _merge_data_for_portfolios(return_data, portfolio_bins, lag, **kwargs):
@@ -154,19 +152,46 @@ def _merge_data_for_portfolios(return_data, portfolio_bins, lag, **kwargs):
     bins_name = portfolio_bins.name
 
     # merge
-    merged_data = return_data\
-                        .merge(portfolio_bins, how='left',
-                            left_index=True, right_on=portfolio_bins.index.names)
+    merged_data = FinancialDataFrame(return_data)\
+                        .merge(portfolio_bins, how='outer',
+                            left_index=True, right_on=portfolio_bins.index.names)\
+                        .sort_index()
 
     # lag & forward fill
     merged_data[bins_name] = merged_data[bins_name]\
                                 .groupby(merged_data.index.get_level_values(0))\
-                                .shift(lag)\
-                                .groupby(merged_data.index.get_level_values(0))\
-                                .fillna(method='ffill', **kwargs)
+                                .apply(lambda x: x.shift(lag)\
+                                            .fillna(method='ffill', **kwargs))
 
+    merged_data = merged_data.dropna()
     return merged_data
 
+
+def _merge_data_for_index(return_data, weighting_data, lag, **kwargs):
+
+    '''
+    Returns a joined DataFrame that contains aligned return data and weighting
+    data.
+    '''
+
+    weights_name = weighting_data.name
+
+    # merge
+    merged_data = FinancialDataFrame(return_data)\
+                        .merge(weighting_data, how='outer',
+                            left_index=True, right_on=weighting_data.index.names)\
+                        .sort_index()
+
+    # lag & forward fill & scale
+    merged_data[weights_name] = merged_data[weights_name]\
+                                .groupby(merged_data.index.get_level_values(0))\
+                                .apply(lambda x: x.shift(lag)\
+                                            .fillna(method='ffill', **kwargs))\
+                                .groupby(merged_data.index.get_level_values(1))\
+                                .apply(lambda x: x.divide(x.sum()))
+    merged_data = merged_data.dropna()
+
+    return merged_data
 
 
 class PortfolioSortResults():
@@ -214,10 +239,11 @@ def sort_portfolios(return_data, sorting_data, n_sorts=10, lag=1,
     results = PortfolioSortResults()
     results.mapping = portfolio_bins
     grouper = [list(merged_data.index.get_level_values(1)),list(merged_data.iloc[:,1])]
-    results.size = merged_data.iloc[:,1]\
-                                    .groupby(grouper).count()
-    results.returns = merged_data.iloc[:,0]\
-                                    .groupby(grouper).mean()
+    results.size = FinancialSeries(merged_data.iloc[:,1]\
+                                    .groupby(grouper).count())
+    results.returns = FinancialSeries(merged_data.iloc[:,0]\
+                                    .groupby(grouper).mean())
+    results.returns.set_obstype('return')
 
     if results.returns.index.get_level_values(1).dtype == 'float':
         results.size.index = pd.MultiIndex.from_arrays(\
@@ -240,12 +266,14 @@ def create_index(return_data, weighting_data=None, lag=0, **kwargs):
     return_data = _prepare_return_data(return_data)
 
     # case without variable weights
-    if weighting_data is None:# or weighting_data in ['equal','equally']:
-        index_returns = FinancialSeries(return_data\
-                                .groupby(return_data.index.get_level_values(1))\
-                                .mean(), name='equally_weighted_index')
-        '''weighting_data = FinancialSeries(1,\
-                            index=return_data.index, name='equal_weights')'''
+    if weighting_data is None:
+        index_returns = return_data\
+                            .groupby(return_data.index.get_level_values(1))\
+                            .mean()
+        index_returns = FinancialDataFrame(index_returns)\
+                            .squeeze()\
+                            .rename('equal_index')\
+                            .sort_index()
 
     # case with variable weights
     else:
@@ -256,33 +284,12 @@ def create_index(return_data, weighting_data=None, lag=0, **kwargs):
 
         #returns = product
         index_returns = merged_data.prod(axis=1)\
-                        .groupby(merged_data.index.get_level_values(1))\
-                        .sum()
+                            .groupby(merged_data.index.get_level_values(1))\
+                            .sum()
+        index_returns = FinancialDataFrame(index_returns)\
+                            .squeeze()\
+                            .rename('weighted_index')
+
+    index_returns = index_returns.set_obstype('return')
 
     return index_returns
-
-
-def _merge_data_for_index(return_data, weighting_data, lag, **kwargs):
-
-    '''
-    Returns a joined DataFrame that contains aligned return data and weighting
-    data.
-    '''
-
-    weights_name = weighting_data.name
-
-    # merge
-    merged_data = FinancialDataFrame(return_data)\
-                        .merge(weighting_data, how='left',
-                            left_index=True, right_on=weighting_data.index.names)
-
-    # lag & forward fill & scale
-    merged_data[weights_name] = merged_data[weights_name]\
-                                .groupby(merged_data.index.get_level_values(0))\
-                                .apply(lambda x: x.shift(lag)\
-                                            .fillna(method='ffill', **kwargs))\
-                                .groupby(merged_data.index.get_level_values(1))\
-                                .apply(lambda x: x.divide(x.sum()))
-    merged_data = merged_data.dropna()
-
-    return merged_data
