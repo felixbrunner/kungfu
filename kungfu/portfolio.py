@@ -260,7 +260,9 @@ def sort_portfolios(return_data, sorting_data, n_sorts=10, lag=1,
 def create_index(return_data, weighting_data=None, lag=0, **kwargs):
 
     '''
-
+    Returns a FinancialSeries that contains returns of an equal or weighted
+    index.
+    Weights sum up to one in each period.
     '''
 
     return_data = _prepare_return_data(return_data)
@@ -277,13 +279,14 @@ def create_index(return_data, weighting_data=None, lag=0, **kwargs):
 
     # case with variable weights
     else:
+        # prepare & merge
         weighting_data = _prepare_weighting_data(weighting_data)
+        merged_data = _merge_data_for_index(return_data, weighting_data,
+                                                lag, **kwargs)
 
-        # merge + dropna
-        merged_data = _merge_data_for_index(return_data, weighting_data, lag, **kwargs)
-
-        #returns = product
-        index_returns = merged_data.prod(axis=1)\
+        # returns = sum(weights*returns)
+        index_returns = merged_data\
+                            .prod(axis=1)\
                             .groupby(merged_data.index.get_level_values(1))\
                             .sum()
         index_returns = FinancialDataFrame(index_returns)\

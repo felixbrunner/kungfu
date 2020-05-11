@@ -603,10 +603,24 @@ class FinancialSeries(pd.Series):
         return fs_standardised
 
 
+    def create_index(self, weighting_data=None, lag=0, **kwargs):
+
+        '''
+        Returns a FinancialSeries that contains returns of an equal or weighted
+        index.
+        Weights sum up to one in each period.
+        '''
+
+        index_returns = create_index(return_data=self,
+                            weighting_data=weighting_data, lag=lag, **kwargs)
+
+        return index_returns
+
+
 
 
     ## # TODO:
-    # estimate_factor_model
+    # estimate factor model
     # calculate_idiosyncratic_volatility
     # realised volatility from returns
 
