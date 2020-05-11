@@ -159,13 +159,11 @@ class FinancialDataFrame(pd.DataFrame):
         Method can be simultaneous or sequential.
         '''
 
-        import kungfu.portfolio as pf
+        import kungfu.portfolio as portfolio
 
         return_data = self[return_column]
         sorting_data = self[sorting_columns]
 
-        results = pf.sort_portfolios(return_data, sorting_data,
+        results = portfolio.sort_portfolios(return_data, sorting_data,
                         n_sorts=n_sorts, lag=lag,  method=method, **kwargs)
         return results
-
-        

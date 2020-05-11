@@ -611,7 +611,8 @@ class FinancialSeries(pd.Series):
         Weights sum up to one in each period.
         '''
 
-        index_returns = create_index(return_data=self,
+        import kungfu.index as index
+        index_returns = index.create_index(return_data=self,
                             weighting_data=weighting_data, lag=lag, **kwargs)
 
         return index_returns
