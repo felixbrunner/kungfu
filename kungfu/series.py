@@ -8,6 +8,15 @@ class FinancialSeries(pd.Series):
 
     '''
     A FinancialSeries is a pandas Series that contains financial observations.
+
+    TO DO:
+    - estimate factor model
+    - calculate_idiosyncratic_volatility
+    - realised volatility from returns
+
+    NOTE:
+    https://github.com/pandas-dev/pandas/pull/28573 needs to be resolved for
+    pd.groupby to work with class methods
     '''
 
     _attributes_ = "obstype"
@@ -616,18 +625,3 @@ class FinancialSeries(pd.Series):
                             weighting_data=weighting_data, lag=lag, **kwargs)
 
         return index_returns
-
-
-
-
-    ## # TODO:
-    # estimate factor model
-    # calculate_idiosyncratic_volatility
-    # realised volatility from returns
-
-    # https://github.com/pandas-dev/pandas/pull/28573 needs to be resolved for
-    # pd.groupby to work with class methods
-
-
-
-    ## DEPRECATED CODE
