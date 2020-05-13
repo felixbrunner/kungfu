@@ -481,7 +481,7 @@ class FinancialSeries(pd.Series):
         summary = summary.append(pd.Series({'Expected shortfall 95%': \
             self.calculate_historic_expected_shortfall()}))
         summary = summary.append(pd.Series({'Downside volatility': \
-            self.calculate_downside_volatility()}))
+            self.calculate_downside_volatility(annual_obs)}))
         summary = summary.append(pd.Series({'Maximum drawdown': \
             self.calculate_max_drawdown()}))
         return summary

@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from kungfu.frame import FinancialDataFrame
 from kungfu.series import FinancialSeries
 
+import kungfu.index as index
+
 '''
 TO DO:
 - Output table class
@@ -21,9 +23,6 @@ def _generate_portfolio_index(sort_names, n_sorts):
     Returns a pandas Index or MultiIndex object that contains the names of
     sorted portfolios.
     '''
-
-    if type(n_sorts) == int:
-        n_sorts = [a for i in range(0,len(sort_names))]
 
     assert len(sort_names) == len(list(n_sorts)),\
         'sort_names and n_portfolios length mismatch'
@@ -166,6 +165,7 @@ def sort_portfolios(return_data, sorting_data, n_sorts=10, lag=1,
 
     return_data = _prepare_return_data(return_data)
     sorting_data = _prepare_sorting_data(sorting_data)
+
     if type(n_sorts) == int:
         n_sorts = [n_sorts for col in sorting_data.columns]
 
@@ -177,6 +177,7 @@ def sort_portfolios(return_data, sorting_data, n_sorts=10, lag=1,
     # merge
     merged_data = _merge_data_for_portfolios(return_data,
                                         portfolio_bins, lag, **kwargs)
+    portfolio_names = _generate_portfolio_index(sorting_data.columns, n_sorts)
 
     # create outputs
     results = PortfolioSortResults()
@@ -187,6 +188,7 @@ def sort_portfolios(return_data, sorting_data, n_sorts=10, lag=1,
     results.returns = FinancialSeries(merged_data.iloc[:,0]\
                                     .groupby(grouper).mean())
     results.returns.set_obstype('return')
+    results.names = portfolio_names
 
     if results.returns.index.get_level_values(1).dtype == 'float':
         results.size.index = pd.MultiIndex.from_arrays(\
@@ -195,6 +197,59 @@ def sort_portfolios(return_data, sorting_data, n_sorts=10, lag=1,
         results.returns.index = pd.MultiIndex.from_arrays(\
                 [results.returns.index.get_level_values(0),\
                  results.returns.index.get_level_values(1).astype(int)])
+
+    return results
+
+
+def sort_longshort(return_data, sorting_data, quantity=0.3, lag=1,
+                method='percentage', **kwargs):
+
+    '''
+    Sort returns into long-short strategy based on one sorting variable.
+    Method can be percentage or fixed.
+
+    TO DO:
+    - flexible weights (eg value-weighted)
+    '''
+
+    assert method in ['percentage', 'fixed'],\
+        'method needs to be either percentage or fixed'
+
+    return_data = _prepare_return_data(return_data)
+    sorting_data = _prepare_sorting_data(sorting_data)
+
+    if method is 'percentage':
+        assert 0 <= quantity <= 1, 'quantity needs to be between 0 and 1'
+        selection = _select_percentage(sorting_data, quantity)
+
+    elif method is 'fixed':
+        assert quantity <= len(return_data.index.get_level_values(0).unique()),\
+            'quantity needs to be less or equal to the number of assets'
+        selection = _select_fixed(sorting_data, quantity)
+
+    # merge
+    merged_data = _merge_data_for_portfolios(return_data,
+                                        selection, lag, **kwargs)
+
+    '''
+    # create outputs
+    results = PortfolioSortResults()
+    results.mapping = portfolio_bins
+    grouper = [list(merged_data.index.get_level_values(1)),list(merged_data.iloc[:,1])]
+    results.size = FinancialSeries(merged_data.iloc[:,1]\
+                                    .groupby(grouper).count())
+    results.returns = FinancialSeries(merged_data.iloc[:,0]\
+                                    .groupby(grouper).mean())
+    results.returns.set_obstype('return')
+    results.names = portfolio_names
+
+    if results.returns.index.get_level_values(1).dtype == 'float':
+        results.size.index = pd.MultiIndex.from_arrays(\
+                [results.size.index.get_level_values(0),\
+                 results.size.index.get_level_values(1).astype(int)])
+        results.returns.index = pd.MultiIndex.from_arrays(\
+                [results.returns.index.get_level_values(0),\
+                 results.returns.index.get_level_values(1).astype(int)])'''
 
 
     return results
@@ -211,3 +266,4 @@ class PortfolioSortResults():
         self.returns = None
         self.size = None
         self.mapping = None
+        self.names = None

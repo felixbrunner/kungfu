@@ -167,3 +167,19 @@ class FinancialDataFrame(pd.DataFrame):
         results = portfolio.sort_portfolios(return_data, sorting_data,
                         n_sorts=n_sorts, lag=lag,  method=method, **kwargs)
         return results
+
+
+    def summarise_performance(self, obstype='return', annual_obs=1):
+
+        '''
+        Summarises the performance of each FinancialSeries in the
+        FinancialDataFrame.
+        obstype needs to be consistent across columns.
+        '''
+
+        summary = FinancialDataFrame(columns=self.columns)
+        for (asset_name, asset_data) in self.iteritems():
+            summary.loc[:,asset_name] = asset_data\
+                                            .set_obstype(obstype)\
+                                            .summarise_performance(annual_obs)
+        return summary
