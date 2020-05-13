@@ -213,7 +213,7 @@ class FactorModelResults():
 
         expected_returns = self.calculate_expected_returns(annual_obs)
 
-        fig, ax = plt.subplots(1, 1)
+        fig, ax = plt.subplots(1, 1, **kwargs)
 
         ax.scatter(expected_returns, self.asset_means*annual_obs,
                     label='Test assets',
@@ -227,5 +227,49 @@ class FactorModelResults():
         ax.set_xlabel('Expected Return')
         ax.set_ylabel('Realised Return')
         ax.legend(loc='lower right')
+
+        return fig
+
+
+    def plot_results(self, annual_obs=1, **kwargs):
+
+        '''
+        Plots the factor model's estimates in 4 subplots:
+        - alphas
+        - betas
+        - mean returns
+        - r squares        
+        '''
+
+        fig, axes = plt.subplots(4, 1, **kwargs)
+
+        axes[0].errorbar(range(1,len(self.alphas)+1), self.alphas*annual_obs,
+                                    yerr=self.alphas_se*annual_obs, fmt='-o')
+        axes[0].axhline(0, color='grey', linestyle='--', linewidth=1)
+        axes[0].set_title('Annual alphas & standard errors')
+        axes[0].set_xticks(range(1,len(self.alphas)+1))
+        axes[0].set_xticklabels([])
+        #axes[0].xaxis.set_tick_params(labeltop=True, labelbottom=False)
+        #axes[0].set_xticklabels(self.alphas.index, rotation='vertical', y=1.1)
+
+        for (factor_name, beta_data) in self.betas.iteritems():
+            axes[1].errorbar(range(1,len(self.betas)+1), beta_data,
+                                    yerr=self.betas_se[factor_name], fmt='-o')
+        axes[1].axhline(0, color='grey', linestyle='--', linewidth=1)
+        axes[1].axhline(1, color='grey', linestyle=':', linewidth=1)
+        axes[1].set_title('Factor loadings (betas) & standard errors')
+        axes[1].set_xticks(range(1,len(self.alphas)+1))
+        axes[1].legend(loc='upper left')
+        axes[1].set_xticklabels([])
+
+        axes[2].plot(self.asset_means*annual_obs, marker='o')
+        axes[2].set_title('Mean Return')
+        axes[2].set_xticks(range(1,len(self.alphas)+1))
+        axes[2].set_xticklabels([])
+
+        axes[3].plot(self.r_squares, marker='o')
+        axes[3].set_title('R²')
+        axes[3].set_xticks(range(1,len(self.alphas)+1))
+        axes[3].set_xticklabels(self.r_squares.index)#, rotation='vertical')
 
         return fig
