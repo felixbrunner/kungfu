@@ -604,6 +604,7 @@ class FinancialSeries(pd.Series):
         '''
         Standardises FinancialSeries involving subtracting the mean and dividing by
         the standard deviation.
+        Returns z-score of each observation.
         '''
 
         mu = self.mean()+loc

@@ -45,7 +45,7 @@ def _prepare_factor_data(factor_data):
     assert type(factor_data.index) == pd.core.indexes.datetimes.DatetimeIndex,\
         'index of supplied data needs to be pandas.DatetimeIndex'
 
-    if type(factor_data) == pd.core.series.Series:
+    if isinstance(factor_data, pd.Series):
         factor_data = factor_data.to_frame()
 
     return factor_data
@@ -238,7 +238,7 @@ class FactorModelResults():
         - alphas
         - betas
         - mean returns
-        - r squares        
+        - r squares
         '''
 
         fig, axes = plt.subplots(4, 1, **kwargs)

@@ -17,7 +17,7 @@ TO DO:
 '''
 
 
-def _generate_portfolio_index(sort_names, n_sorts):
+def _generate_portfolio_names(sort_names, n_sorts):
 
     '''
     Returns a pandas Index or MultiIndex object that contains the names of
@@ -177,7 +177,7 @@ def sort_portfolios(return_data, sorting_data, n_sorts=10, lag=1,
     # merge
     merged_data = _merge_data_for_portfolios(return_data,
                                         portfolio_bins, lag, **kwargs)
-    portfolio_names = _generate_portfolio_index(sorting_data.columns, n_sorts)
+    portfolio_names = _generate_portfolio_names(sorting_data.columns, n_sorts)
 
     # create outputs
     results = PortfolioSortResults()
@@ -267,3 +267,34 @@ class PortfolioSortResults():
         self.size = None
         self.mapping = None
         self.names = None
+
+
+    def summarise_performance(self, annual_obs=1):
+
+        '''
+        Summarises the performance of each sorted portfolio in the
+        PortfolioSortResults object.
+        '''
+
+        summary = self.returns.unstack().summarise_performance(obstype='return',
+                                                    annual_obs=annual_obs)
+        return summary
+
+
+    def plot_indices(self, **kwargs):
+
+        '''
+        '''
+
+        fig, ax = plt.subplots(1, 1, **kwargs)
+
+        for (pf_name, pf_returns) in self.returns.unstack().iteritems():
+            ax.plot(pf_returns.set_obstype('return').to_prices(init_price=1),
+                        linewidth=1, label=pf_name)
+        import kungfu.plotting as plotting
+        startdate = self.returns.unstack().index[0]
+        enddate = self.returns.unstack().index[-1]
+        plotting.add_recession_bars(ax, startdate=startdate, enddate=enddate)
+        ax.legend(loc='upper left')
+
+        return fig

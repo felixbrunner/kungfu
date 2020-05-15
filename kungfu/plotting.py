@@ -5,14 +5,14 @@ import kungfu.dataloader as data
 import matplotlib.pyplot as plt
 
 
-def add_recession_bars(ax, freq='M', startdate='1/1/1900', enddate=dt.datetime.today()):
+def add_recession_bars(ax, freq='D', startdate='1/1/1900', enddate=dt.datetime.today()):
 
     '''
     Adds NBER recession bars to plotly axis of a timeseries plot.
     '''
 
     # get data
-    usrec = data.download_recessions_data(freq, startdate, enddate)
+    usrec = data.download_recessions_data(freq=freq, startdate=startdate, enddate=enddate)
 
     # create list of recessions
     rec_start = usrec.diff(1)
