@@ -298,3 +298,10 @@ class PortfolioSortResults():
         ax.legend(loc='upper left')
 
         return fig
+
+
+class Portfolio():
+
+    def __init__(self, returns, weights):
+        self.returns = returns
+        self.weights = weights
