@@ -13,6 +13,7 @@ class FinancialSeries(pd.Series):
     - estimate factor model
     - calculate_idiosyncratic_volatility
     - realised volatility from returns
+    - daily to monthly returns
 
     NOTE:
     https://github.com/pandas-dev/pandas/pull/28573 needs to be resolved for

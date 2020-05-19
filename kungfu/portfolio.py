@@ -298,3 +298,11 @@ class PortfolioSortResults():
         ax.legend(loc='upper left')
 
         return fig
+
+
+    @property
+    def frequencies(self):
+        freq = self.mapping\
+            .groupby([self.mapping.index.get_level_values(0), self.mapping.values])\
+            .count().unstack(fill_value=0)
+        return FinancialDataFrame(freq)
