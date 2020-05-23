@@ -97,6 +97,17 @@ class FinancialDataFrame(pd.DataFrame):
                         na_rep='', escape=False, **kwargs)
 
 
+    def to_latex(self, **kwargs):
+
+        '''
+        '''
+
+        import warnings
+        warnings.warn('Writing to LaTeX format using pandas method. Consider\
+            using kungfu method export_to_latex for preset formatiing')
+        pd.DataFrame.to_latex(self, **kwargs)
+
+
     def fit_linear_regression(self, endog, exog, constant=True,
             lag=0, missing='drop', **kwargs):
 
