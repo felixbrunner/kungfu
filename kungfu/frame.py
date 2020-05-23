@@ -45,6 +45,13 @@ class FinancialDataFrame(pd.DataFrame):
         return FinancialSeries
 
 
+    @staticmethod
+    def _validate(self):
+        # verify there is datetime column
+        #if 'latitude' not in obj.columns or 'longitude' not in obj.columns:
+        #    raise AttributeError("Must have 'latitude' and 'longitude'.")
+
+
     def __init__(self, *args, **kwargs):
         super(FinancialDataFrame, self).__init__(*args, **kwargs)
         if len(args) == 1 and isinstance(args[0], FinancialDataFrame):
@@ -100,6 +107,7 @@ class FinancialDataFrame(pd.DataFrame):
     def to_latex(self, **kwargs):
 
         '''
+        Overwrites pandas to_latex method to issue warning.
         '''
 
         import warnings
