@@ -300,8 +300,186 @@ class PortfolioSortResults():
         return fig
 
 
+################################################################################
+
+def _prepare_return_data(return_data):
+
+    '''
+    Returns return data in long format DataFrame.
+    '''
+
+    return_data = FinancialDataFrame(return_data)
+
+    if type(return_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
+        return_data = return_data.stack().to_frame()
+
+    return_data = return_data.sort_index()
+    return return_data
+
+
+def _prepare_weighting_data(weighting_data):
+
+    '''
+    Returns weighting data in long format DataFrame.
+    Drops missing observations.
+    '''
+
+    if type(weighting_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
+        weighting_data = weighting_data.stack()#.to_frame()
+
+    assert type(weighting_data.index) == pd.core.indexes.multi.MultiIndex,\
+        'Need to supply panel data as sorting variable'
+
+    weighting_data = FinancialSeries(weighting_data).dropna().sort_index()
+    return weighting_data
+
+
+def _weigh_equally(return_data):
+
+    '''
+    Return an equally weighted index of return data with continuous rebalancing.
+    '''
+
+    portfolio_returns = return_data\
+                        .groupby(return_data.index.get_level_values(1))\
+                        .mean()
+    portfolio_returns = FinancialDataFrame(portfolio_returns)\
+                        .squeeze()\
+                        .rename('equal_index')\
+                        .sort_index()
+    return portfolio_returns
+
+
+def _merge_returns_and_balance_weights(asset_returns, balance_weights):
+
+    '''
+    Returns a joined DataFrame that contains aligned return data and weighting
+    data.
+    '''
+
+    merged_data = FinancialDataFrame(asset_returns)\
+                        .merge(balance_weights, how='outer',
+                            left_index=True, right_on=balance_weights.index.names)\
+                        .sort_index()
+
+    return merged_data
+
+
+def _fill_weights_continuously(merged_data, lag, **kwargs):
+
+    '''
+    '''
+
+    return_data = FinancialDataFrame(merged_data.iloc[:,0])
+
+    weights_data = merged_data.iloc[:,1]\
+                        .unstack(level=0)\
+                        .shift(lag)\
+                        .fillna(method='ffill', **kwargs)
+    total_weights = weights_data.sum(axis=1)
+    weights_data = weights_data\
+                        .divide(total_weights, axis=1)\
+                        .stack()
+
+    merged_data = return_data.merge(weights_data, how='left',
+                            left_index=True, right_on=weights_data.index.names)
+
+    '''weights_name = weighting_data.columns[1]
+
+    # lag & forward fill & scale
+    merged_data[weights_name] = merged_data[weights_name]\
+                                .groupby(merged_data.index.get_level_values(0))\
+                                .apply(lambda x: x.shift(lag)\
+                                            .fillna(method='ffill', **kwargs))\
+                                .groupby(merged_data.index.get_level_values(1))\
+                                .apply(lambda x: x.divide(x.sum()))
+    merged_data = merged_data.dropna()'''
+
+    return merged_data
+
+
+def _fill_weights_discretely(merged_data, lag, **kwargs):
+
+    '''
+    '''
+
+    return_data = merged_data.iloc[:,0]\
+                        .unstack(level=0)
+
+    weights_data = merged_data.iloc[:,1]\
+                        .unstack(level=0)\
+                        .shift(lag)
+                        #.fillna(method='ffill', **kwargs)
+
+    total_weights = weights_data.sum(axis=1)
+    weights_data = weights_data.divide(total_weights, axis=1).stack()
+
+    merged_data = return_data.merge(weights_data, how='left',
+        left_index=True, right_on=weights_data.index.names)
+
+    return merged_data
+
+
+def _weigh_proportionally(merged_data):
+    # returns = sum(weights*returns)
+    portfolio_returns = merged_data\
+                                .prod(axis=1)\
+                                .groupby(merged_data.index.get_level_values(1))\
+                                .sum()
+    portfolio_returns = FinancialDataFrame(portfolio_returns)\
+                                .squeeze()\
+                                .rename('weighted_index')
+    return portfolio_returns
+
+
+
 class Portfolio():
 
-    def __init__(self, returns, weights):
-        self.returns = returns
-        self.weights = weights
+    '''
+    Class to hold a portfolio of assets with weights
+    '''
+
+    def __init__(self, asset_returns, balance_weights=None):
+        self.asset_returns = _prepare_return_data(asset_returns)
+        if balance_weights is not None:
+            self.balance_weights = _prepare_weighting_data(balance_weights)
+        else:
+            self.balance_weights = None
+
+
+    def calculate_returns(self, balance_weights=None, rebalance='discrete'):
+
+        '''
+
+        '''
+
+        assert rebalance in ['discrete', 'continuous'],\
+            'reablance must be either discrete or continuous'
+
+        # set balance_weights if provided
+        if balance_weights is not None:
+            self.balance_weights = _prepare_weighting_data(balance_weights)
+
+        # infer equal weighting if no weights are provided
+        if self.balance_weights is None:
+            portfolio_returns = _weigh_equally(return_data)
+        # use input weights otherwise
+        else:
+            # merge
+            merged_data = _merge_returns_and_balance_weights(return_data,
+                                                                weighting_data)
+
+
+
+
+
+
+
+        portfolio_returns = portfolio_returns.set_obstype('return')
+
+        return portfolio_returns
+
+
+    @property
+    def turnover(self):
+        abc

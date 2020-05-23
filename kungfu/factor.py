@@ -169,19 +169,20 @@ class FactorModelResults():
         self.factor_names = factor_names
         self.asset_names = asset_names
         self.timeline = timeline
-        self.alphas = FinancialSeries(index=asset_names, name='alpha')
-        self.alphas_se = FinancialSeries(index=asset_names, name='alpha_se')
-        self.betas = FinancialDataFrame(index=asset_names, columns=self.factor_names)
-        self.betas_se = FinancialDataFrame(index=asset_names, columns=self.factor_names)
-        self.residuals = FinancialDataFrame(index=timeline, columns=asset_names)
-        self.idiosyncratic_volas = FinancialSeries(index=asset_names,
+        self.alphas = FinancialSeries(dtype='float', index=asset_names, name='alpha')
+        self.alphas_se = FinancialSeries(dtype='float', index=asset_names, name='alpha_se')
+        self.betas = FinancialDataFrame(dtype='float', index=asset_names, columns=self.factor_names)
+        self.betas_se = FinancialDataFrame(dtype='float', index=asset_names, columns=self.factor_names)
+        self.residuals = FinancialDataFrame(dtype='float', index=timeline, columns=asset_names)
+        self.idiosyncratic_volas = FinancialSeries(dtype='float', index=asset_names,
                                                 name='idiosyncratic_volatility')
-        self.r_squares = FinancialSeries(index=asset_names, name='r_squared')
+        self.r_squares = FinancialSeries(dtype='float', index=asset_names, name='r_squared')
         self.asset_means = None
         self.factor_means = None
 
 
-    def get_estimates(self):
+    @property
+    def estimates(self):
 
         '''
         Returns parameter estimates of FactorModelResults as a DataFrame.
@@ -193,7 +194,8 @@ class FactorModelResults():
         return estimates
 
 
-    def calculate_expected_returns(self, annual_obs=1):
+    @property
+    def expected_returns(self, annual_obs=1):
 
         '''
         Returns expected returns from the factor model estimates.
