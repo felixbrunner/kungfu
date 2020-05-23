@@ -105,7 +105,7 @@ class FactorModel():
                                     estimate.params[self.factor_names].values
             results.betas_se.loc[asset,self.factor_names] = \
                                     estimate.bse[self.factor_names].values
-            results.residuals.loc[:,asset] = estimate.resid.values
+            results.residuals.loc[estimate.resid.index, asset] = estimate.resid.values
             results.idiosyncratic_volas.at[asset] = estimate.mse_resid**0.5
             results.r_squares.at[asset] = estimate.rsquared
 
