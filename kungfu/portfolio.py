@@ -424,7 +424,60 @@ class Portfolio():
 
     @asset_returns.setter
     def asset_returns(self, return_data):
+        return_data = FinancialDataFrame(return_data)
 
+        if type(return_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
+            return_data = return_data.stack().to_frame()
+
+        self.__asset_returns = return_data.sort_index()
+
+
+    @property
+    def weighting_data(self):
+        return self.__weighting_data
+
+    @weighting_data.setter
+    def weighting_data(self, balance_weights):
+
+        '''
+        Returns weighting data in long format DataFrame.
+        Drops missing observations.
+        '''
+
+        if type(balance_weights.index) == pd.core.indexes.datetimes.DatetimeIndex:
+            balance_weights = balance_weights.stack()#.to_frame()
+
+        assert type(balance_weights.index) == pd.core.indexes.multi.MultiIndex,\
+            'Need to supply panel data as sorting variable'
+
+        balance_weights = FinancialSeries(balance_weights).dropna().sort_index()
+        self.__weighting_data = balance_weights
+
+
+    @property
+    def assets(self):
+        return list(self.asset_returns.index.get_level_values(1).unique())
+
+
+    @property
+    def merged_data(self):
+        merged_data = FinancialDataFrame(self.asset_returns)\
+                        .merge(self.weighting_data, how='outer',
+                            left_index=True, right_on=self.weighting_data.index.names)\
+                        .sort_index()
+
+        return merged_data
+
+
+    @property
+    def weights(self):
+        pass
+
+
+    @property
+    def returns(self, balance_weights=None, rebalance='discrete'):
+
+        '''
         '''
         Sets the contained assets' returns as a FinancialDataFrame.
         '''
@@ -482,7 +535,7 @@ class Portfolio():
                         .sort_index()
 
         return merged_data
-    
+
 
     def scale_weights(self, inplace=False):
 
