@@ -410,12 +410,12 @@ class Portfolio():
     Class to hold a portfolio of assets.
     '''
 
-    def __init__(self, asset_returns, balance_weights=None):
+    def __init__(self, asset_returns, quantities=None):
         self.asset_returns = asset_returns
-        if balance_weights is None:
-            self.weighting_data = None
+        if quantities is None:
+            self.quantities = None
         else:
-            self.weighting_data = balance_weights
+            self.quantities = quantities
 
 
     @property
@@ -424,60 +424,7 @@ class Portfolio():
 
     @asset_returns.setter
     def asset_returns(self, return_data):
-        return_data = FinancialDataFrame(return_data)
 
-        if type(return_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
-            return_data = return_data.stack().to_frame()
-
-        self.__asset_returns = return_data.sort_index()
-
-
-    @property
-    def weighting_data(self):
-        return self.__weighting_data
-
-    @weighting_data.setter
-    def weighting_data(self, balance_weights):
-
-        '''
-        Returns weighting data in long format DataFrame.
-        Drops missing observations.
-        '''
-
-        if type(balance_weights.index) == pd.core.indexes.datetimes.DatetimeIndex:
-            balance_weights = balance_weights.stack()#.to_frame()
-
-        assert type(balance_weights.index) == pd.core.indexes.multi.MultiIndex,\
-            'Need to supply panel data as sorting variable'
-
-        balance_weights = FinancialSeries(balance_weights).dropna().sort_index()
-        self.__weighting_data = balance_weights
-
-
-    @property
-    def assets(self):
-        return list(self.asset_returns.index.get_level_values(1).unique())
-
-
-    @property
-    def merged_data(self):
-        merged_data = FinancialDataFrame(self.asset_returns)\
-                        .merge(self.weighting_data, how='outer',
-                            left_index=True, right_on=self.weighting_data.index.names)\
-                        .sort_index()
-
-        return merged_data
-
-
-    @property
-    def weights(self):
-        pass
-
-
-    @property
-    def returns(self, balance_weights=None, rebalance='discrete'):
-
-        '''
         '''
         Sets the contained assets' returns as a FinancialDataFrame.
         '''
@@ -491,25 +438,25 @@ class Portfolio():
 
 
     @property
-    def weighting_data(self):
-        return self.__weighting_data
+    def quantities(self):
+        return self.__quantities
 
-    @weighting_data.setter
-    def weighting_data(self, balance_weights):
+    @quantities.setter
+    def quantities(self, quantities):
 
         '''
         Sets returns weighting data as long format FinancialSeries.
         Drops missing observations.
         '''
 
-        if type(balance_weights.index) == pd.core.indexes.datetimes.DatetimeIndex:
-            balance_weights = balance_weights.stack()#.to_frame()
+        if type(quantities.index) == pd.core.indexes.datetimes.DatetimeIndex:
+            quantities = quantities.stack()#.to_frame()
 
-        assert type(balance_weights.index) == pd.core.indexes.multi.MultiIndex,\
+        assert type(quantities.index) == pd.core.indexes.multi.MultiIndex,\
             'Need to supply panel data as sorting variable'
 
-        balance_weights = FinancialSeries(balance_weights).dropna().sort_index().rename('weighting')
-        self.__weighting_data = balance_weights
+        quantities = FinancialSeries(quantities).dropna().sort_index().rename('quantities')
+        self.__quantities = quantities
 
 
     @property
@@ -537,22 +484,22 @@ class Portfolio():
         return merged_data
 
 
-    def scale_weights(self, inplace=False):
+    def scale_quantities(self, total=1, inplace=False):
 
         '''
         Returns FinancialSeries with total weights scaled to 1 in each period.
         '''
 
-        total_weights = self.weighting_data\
-                                .groupby(self.weighting_data.index.get_level_values(0))\
+        total_quantities = self.quantities\
+                                .groupby(self.quantities.index.get_level_values(0))\
                                 .sum()\
-                                .astype(float)**-1
-        scaled_weights = self.weighting_data\
+                                .astype(float)**-1*total
+        scaled_quantities = self.quantities\
                                 .to_frame()\
-                                .join(total_weights, how='left', rsuffix='_tot')\
+                                .join(total_quantities, how='left', rsuffix='_tot')\
                                 .prod(axis=1)
 
         if inplace:
-            self.weighting_data = scaled_weights
+            self.quantities = scaled_quantities
         else:
-            return scaled_weights
+            return scaled_quantities
