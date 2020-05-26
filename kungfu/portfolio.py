@@ -436,24 +436,82 @@ def _weigh_proportionally(merged_data):
 class Portfolio():
 
     '''
-    Class to hold a portfolio of assets with weights
+    Class to hold a portfolio of assets.
     '''
 
     def __init__(self, asset_returns, balance_weights=None):
-        self.asset_returns = _prepare_return_data(asset_returns)
-        if balance_weights is not None:
-            self.balance_weights = _prepare_weighting_data(balance_weights)
+        self.asset_returns = asset_returns
+        if balance_weights is None:
+            self.weighting_data = None
         else:
-            self.balance_weights = None
+            self.weighting_data = balance_weights
 
 
-    def calculate_returns(self, balance_weights=None, rebalance='discrete'):
+    @property
+    def asset_returns(self):
+        return self.__asset_returns
+
+    @asset_returns.setter
+    def asset_returns(self, return_data):
+        return_data = FinancialDataFrame(return_data)
+
+        if type(return_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
+            return_data = return_data.stack().to_frame()
+
+        self.__asset_returns = return_data.sort_index()
+
+
+    @property
+    def weighting_data(self):
+        return self.__weighting_data
+
+    @weighting_data.setter
+    def weighting_data(self, balance_weights):
 
         '''
-
+        Returns weighting data in long format DataFrame.
+        Drops missing observations.
         '''
 
-        assert rebalance in ['discrete', 'continuous'],\
+        if type(balance_weights.index) == pd.core.indexes.datetimes.DatetimeIndex:
+            balance_weights = balance_weights.stack()#.to_frame()
+
+        assert type(balance_weights.index) == pd.core.indexes.multi.MultiIndex,\
+            'Need to supply panel data as sorting variable'
+
+        balance_weights = FinancialSeries(balance_weights).dropna().sort_index()
+        self.__weighting_data = balance_weights
+
+
+    @property
+    def assets(self):
+        return list(self.asset_returns.index.get_level_values(1).unique())
+
+
+    @property
+    def merged_data(self):
+        merged_data = FinancialDataFrame(self.asset_returns)\
+                        .merge(self.weighting_data, how='outer',
+                            left_index=True, right_on=self.weighting_data.index.names)\
+                        .sort_index()
+
+        return merged_data
+
+
+    @property
+    def weights(self):
+        pass
+
+
+    @property
+    def returns(self, balance_weights=None, rebalance='discrete'):
+
+        '''
+        '''
+
+        pass
+
+        '''assert rebalance in ['discrete', 'continuous'],\
             'reablance must be either discrete or continuous'
 
         # set balance_weights if provided
@@ -477,9 +535,9 @@ class Portfolio():
 
         portfolio_returns = portfolio_returns.set_obstype('return')
 
-        return portfolio_returns
+        return portfolio_returns'''
 
 
     @property
     def turnover(self):
-        abc
+        pass
