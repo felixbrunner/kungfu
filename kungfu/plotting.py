@@ -29,3 +29,23 @@ def add_recession_bars(ax, freq='D', startdate='1/1/1900', enddate=dt.datetime.t
     # old version
     #usrec = usrec['USREC']
     #ax.fill_between(usrec.index, ax.get_ylim()[0], ax.get_ylim()[1], where=usrec.values, color='grey', alpha=0.4)
+
+
+
+###################
+## PLOT SETTINGS ##
+###################
+
+# colors
+DARK_BLUE = '#014c63'
+DARK_GREEN = '#3b5828'
+DARK_RED = '#880000'
+ORANGE = '#ae3e00'
+DARK_YELLOW = '#ba9600'
+PURPLE = '#663a82'
+color_list = [DARK_BLUE, DARK_GREEN, DARK_RED, DARK_YELLOW,
+              ORANGE, PURPLE]
+
+plt.style.use('seaborn')
+plt.rcParams['axes.prop_cycle'] = plt.cycler(color=color_list)
+plt.rcParams['figure.figsize'] = [17, 8]

@@ -47,6 +47,7 @@ class FinancialDataFrame(pd.DataFrame):
 
     @staticmethod
     def _validate(self):
+        pass
         # verify there is datetime column
         #if 'latitude' not in obj.columns or 'longitude' not in obj.columns:
         #    raise AttributeError("Must have 'latitude' and 'longitude'.")
