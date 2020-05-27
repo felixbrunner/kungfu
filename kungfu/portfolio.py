@@ -518,3 +518,18 @@ class Portfolio():
             self.quantities = lagged_quantities
         else:
             return lagged_quantities
+
+
+    @property
+    def asset_prices(self):
+
+        '''
+        Returns a FinancialSeries of prices corresponding to the POrtfolio's asset_returns.
+        '''
+
+        asset_prices = FinancialSeries(index=self.asset_returns.index)
+        for asset in self.assets:
+            index = self.asset_returns.index.get_level_values(1)==asset
+            asset_prices.loc[index] = FinancialSeries(self.asset_returns.loc[index].squeeze()).set_obstype('return').to_prices()
+
+        return asset_prices
