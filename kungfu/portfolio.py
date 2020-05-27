@@ -503,3 +503,18 @@ class Portfolio():
             self.quantities = scaled_quantities
         else:
             return scaled_quantities
+
+
+    def lag_quantities(self, lags=1, inplace=False):
+
+        '''
+        Returns FinancialSeries that contains lagged quantities.
+        Lags are based on the index of the asset_returns data.
+        '''
+
+        lagged_quantities = pf.merged_data['quantities'].unstack().shift(lags).stack()
+
+        if inplace:
+            self.quantities = lagged_quantities
+        else:
+            return lagged_quantities
