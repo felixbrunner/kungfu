@@ -8,6 +8,8 @@ from kungfu.series import FinancialSeries
 
 import kungfu.index as index
 
+import warnings
+
 '''
 TO DO:
 - Output table class
@@ -477,8 +479,8 @@ class Portfolio():
         '''
 
         merged_data = FinancialDataFrame(self.asset_returns)\
-                        .merge(self.weighting_data, how='outer',
-                            left_index=True, right_on=self.weighting_data.index.names)\
+                        .merge(self.quantities, how='outer',
+                            left_index=True, right_on=self.quantities.index.names)\
                         .sort_index()
 
         return merged_data
@@ -530,6 +532,114 @@ class Portfolio():
         asset_prices = FinancialSeries(index=self.asset_returns.index)
         for asset in self.assets:
             index = self.asset_returns.index.get_level_values(1)==asset
-            asset_prices.loc[index] = FinancialSeries(self.asset_returns.loc[index].squeeze()).set_obstype('return').to_prices()
+            asset_prices.loc[index] = FinancialSeries(self.asset_returns.loc[index].squeeze())\
+                                            .set_obstype('return')\
+                                            .to_prices()\
+                                            .rename('price')
 
         return asset_prices
+
+
+    @property
+    def start_date(self):
+
+        '''
+        Returns the date of the first return observation of the portfolio.
+        '''
+
+        return self.asset_returns.unstack().index[0]
+
+
+    def set_equal_quantities(self, quantity=1, inplace=True):
+
+        '''
+        Sets qunatities such that each asset has a quantity of 1 at the beginning of the sample.
+        '''
+
+        if self.quantities is not None:
+            warnings.warn('quantities will be overriden')
+
+        if inplace:
+            self.quantities = FinancialSeries(quantity, index=pd.MultiIndex.from_product([[self.start_date],self.assets]))
+        else:
+            return FinancialSeries(1, index=pd.MultiIndex.from_product([[self.start_date],self.assets]))
+
+
+    def _rebalance_continuously(self, **kwargs):
+
+        '''
+        Returns quantities with missing quantities filled through continuous rebalancing.
+        '''
+
+        merged_data = self.merged_data
+        filled_quantities = merged_data['quantities']\
+                                .groupby(merged_data.index.get_level_values(0))\
+                                .fillna(method='ffill', **kwargs)
+        return filled_quantities
+
+
+    def _rebalance_discretely(self, **kwargs):
+
+        '''
+        Returns quantities with missing quantities filled through rebalancing at dates given by the quantity data.
+        '''
+
+        merged_data = FinancialDataFrame(self.asset_prices)\
+                        .merge(self.quantities, how='outer',
+                            left_index=True, right_on=self.quantities.index.names)\
+                        .sort_index()
+        merged_data['quantities'] = merged_data['quantities']\
+                                        .groupby(merged_data.index.get_level_values(0))\
+                                        .fillna(method='ffill', **kwargs)
+        filled_quantities = merged_data.prod(axis=1)
+        return filled_quantities
+
+
+    @property
+    def weights(self, rebalance='discrete'):
+
+        '''
+
+        '''
+
+        assert rebalance in ['discrete', 'continuous'],\
+            'rebalance must be either discrete or continuous'
+
+        # infer equal weighting if no weights are provided
+        if self.balance_weights is None:
+            self.quantities = self.set_equal_quantities(1)
+            self.quantities = self.scale_quantitites()
+
+        if rebalance is 'continuous':
+            weights = self._rebalance_continuously()
+        elif rebalance is 'discrete':
+            weights = self._rebalance_discretely()
+
+        weights = self.scale_quantitites()
+
+        return weights
+
+
+    @property
+    def returns(self, rebalance='discrete'):
+
+        '''
+
+        '''
+
+        assert rebalance in ['discrete', 'continuous'],\
+            'rebalance must be either discrete or continuous'
+
+        returns = self.asset_returns * self.weights(rebalance)
+
+        portfolio_returns = returns.\
+                                groupby(merged_data.index.get_level_values(1))\
+                                .sum()
+        portfolio_returns = FinancialSeries(portfolio_returns)\
+                                .set_obstype('return')
+        return portfolio_returns
+
+
+    @property #TO BE IMPLEMENTED
+    def turnover(self):
+        pass
