@@ -8,6 +8,9 @@ from kungfu.series import FinancialSeries
 
 import kungfu.index as index
 
+import warnings
+import copy
+
 '''
 TO DO:
 - Output table class
@@ -306,3 +309,281 @@ class PortfolioSortResults():
             .groupby([self.mapping.index.get_level_values(0), self.mapping.values])\
             .count().unstack(fill_value=0)
         return FinancialDataFrame(freq)
+
+
+################################################################################
+
+
+class Portfolio():
+
+    '''
+    Class to hold a portfolio of assets.
+    '''
+
+    def __init__(self, asset_returns, weights=None, asset_prices=None, quantities=None):
+        self.asset_returns = asset_returns
+        self.quantities = quantities
+        self.__asset_prices = asset_prices
+        #self.__weights = weights
+
+
+    @property
+    def asset_returns(self):
+        return self.__asset_returns
+
+    @asset_returns.setter
+    def asset_returns(self, return_data):
+
+        '''
+        Sets the contained assets' returns as a FinancialDataFrame.
+        '''
+
+        return_data = FinancialDataFrame(return_data)
+
+        if type(return_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
+            return_data = return_data.stack().to_frame()
+
+        return_data = return_data.squeeze().rename('return').sort_index()
+
+        self.__asset_returns = return_data
+
+
+    @property
+    def asset_prices(self):
+
+        '''
+        Returns a FinancialSeries of prices corresponding to the POrtfolio's asset_returns.
+        '''
+
+        asset_prices = FinancialSeries(index=self.asset_returns.index)
+        for asset in self.assets:
+            index = self.asset_returns.index.get_level_values(1)==asset
+            asset_prices.loc[index] = FinancialSeries(self.asset_returns.loc[index].squeeze())\
+                                            .set_obstype('return')\
+                                            .to_prices()
+        asset_prices = asset_prices.rename('price')
+        self.__asset_prices = asset_prices
+        return asset_prices
+
+
+    @property
+    def quantities(self):
+        return self.__quantities
+
+    @quantities.setter
+    def quantities(self, quantities):
+
+        '''
+        Sets returns weighting data as long format FinancialSeries.
+        Drops missing observations.
+        '''
+
+        if quantities is not None:
+            if type(quantities.index) == pd.core.indexes.datetimes.DatetimeIndex:
+                quantities = quantities.stack()#.to_frame()
+
+            assert type(quantities.index) == pd.core.indexes.multi.MultiIndex,\
+                'Need to supply panel data as sorting variable'
+
+            quantities = FinancialSeries(quantities).dropna().sort_index().rename('quantity')
+        self.__quantities = quantities
+
+
+    @property
+    def assets(self):
+
+        '''
+        Returns a list of assets in the portfolio.
+        '''
+
+        return list(self.asset_returns.index.get_level_values(1).unique())
+
+
+    @property
+    def merged_data(self):
+
+        '''
+        Merges the Portfolio's asset_returns data with the weighting_data and returns a FinancialDataFrame.
+        '''
+
+        merged_data = FinancialDataFrame(self.asset_returns)
+
+        if self.__asset_prices is not None:
+            merged_data = merged_data\
+                            .merge(self.asset_prices, how='outer',
+                                left_index=True, right_on=self.quantities.index.names)
+
+        if self.quantities is not None:
+            merged_data = merged_data\
+                            .merge(self.quantities, how='outer',
+                                left_index=True, right_on=self.quantities.index.names)\
+                            .sort_index()
+
+        return merged_data
+
+
+    @property
+    def start_date(self):
+
+        '''
+        Returns the date of the first return observation of the portfolio.
+        '''
+
+        return self.asset_returns.unstack().index[0]
+
+
+    def __copy__(self):
+        return copy.deepcopy(self)
+
+
+
+    def scale_quantities(self, total=1):
+
+        '''
+        Returns FinancialSeries with total weights scaled to 1 in each period.
+        '''
+
+        total_quantities = self.quantities\
+                                .groupby(self.quantities.index.get_level_values(0))\
+                                .sum()\
+                                .astype(float)**-1*total
+        scaled_quantities = self.quantities\
+                                .to_frame()\
+                                .join(total_quantities, how='left', rsuffix='_tot')\
+                                .prod(axis=1)
+
+        pf_scaled = self.__copy__()
+        pf_scaled.quantities = scaled_quantities
+        return pf_scaled
+
+
+    def lag_quantities(self, lags=1):
+
+        '''
+        Returns FinancialSeries that contains lagged quantities.
+        Lags are based on the index of the asset_returns data.
+        '''
+
+        lagged_quantities = self.merged_data['quantity'].unstack().shift(lags).stack()
+
+        pf_lagged = self.__copy__()
+        pf_lagged.quantities = lagged_quantities
+        return pf_lagged
+
+
+
+    def set_equal_quantities(self, quantity=1):
+
+        '''
+        Sets qunatities such that each asset has a quantity of 1 at the beginning of the sample.
+        '''
+
+        if self.quantities is not None:
+            warnings.warn('quantities will be overriden')
+
+        pf_equal = self.__copy__()
+        pf_equal.quantities = FinancialSeries(quantity, index=pd.MultiIndex.from_product([[self.start_date],self.assets],\
+                                                                                        names=self.asset_returns.index.names))
+        return pf_equal
+
+
+    def _rebalance_continuously(self, **kwargs):
+
+        '''
+        Returns quantities with missing quantities filled through continuous rebalancing.
+        '''
+
+        merged_data = self.merged_data
+        filled_quantities = merged_data['quantity']\
+                                .groupby(merged_data.index.get_level_values(1))\
+                                .fillna(method='ffill', **kwargs)
+        return filled_quantities
+
+
+    def _rebalance_discretely(self, **kwargs):
+
+        '''
+        Returns quantities with missing quantities filled through rebalancing at dates given by the quantity data.
+        '''
+
+        merged_data = self.merged_data
+        merged_data['quantity'] = merged_data['quantity']\
+                                        .groupby(merged_data.index.get_level_values(1))\
+                                        .fillna(method='ffill', **kwargs)
+        filled_quantities = merged_data.prod(axis=1)
+        return filled_quantities
+
+
+    def rebalance(self, method='discrete'):
+
+        '''
+        Rebalances the Portfolio's quantities either discretely (default) or continuously.
+        '''
+
+        assert method in ['discrete', 'continuous'],\
+            'method must be either discrete or continuous'
+
+        pf_rebalanced = self.__copy__()
+
+        if method is 'continuous':
+            pf_rebalanced.quantities = self._rebalance_continuously()
+        elif method is 'discrete':
+            pf_rebalanced.quantities = self._rebalance_discretely()
+
+        return pf_rebalanced
+
+
+
+    @property
+    def weights(self):
+
+        '''
+
+        '''
+
+
+        # infer equal weighting if no weights are provided
+        assert self.quantities is not None,\
+            'quantities required'
+
+        weights = self.scale_quantities(1).quantities
+        return weights
+
+
+    @property
+    def returns(self):
+
+        '''
+
+        '''
+
+        returns = self.asset_returns * self.quantities
+
+        portfolio_returns = returns.\
+                                groupby(merged_data.index.get_level_values(0))\
+                                .sum()
+        portfolio_returns = FinancialSeries(portfolio_returns)\
+                                .set_obstype('return')
+        return portfolio_returns
+
+
+    @property
+    def delevered_returns(self):
+
+        '''
+
+        '''
+
+        returns = self.asset_returns * self.scale_quantities(1).quantities
+
+        portfolio_returns = returns.\
+                                groupby(merged_data.index.get_level_values(0))\
+                                .sum()
+        portfolio_returns = FinancialSeries(portfolio_returns)\
+                                .set_obstype('return')
+        return portfolio_returns
+
+
+    @property # TO BE IMPLEMENTED
+    def turnover(self):
+        pass

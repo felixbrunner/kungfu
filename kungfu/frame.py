@@ -21,7 +21,7 @@ class FinancialDataFrame(pd.DataFrame):
     financial observations.
     '''
 
-    _attributes_ = "obstypes"
+    _attributes_ = 'obstypes'
 
     # constructor properties to output the right types
 
