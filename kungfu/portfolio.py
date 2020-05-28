@@ -320,11 +320,15 @@ class Portfolio():
     Class to hold a portfolio of assets.
     '''
 
-    def __init__(self, asset_returns, weights=None, asset_prices=None, quantities=None):
+    def __init__(self, asset_returns=None, weights=None, asset_prices=None, quantities=None):
+
+        assert (asset_returns is not None) != (asset_prices is not None),\
+            'need to supply exactly one of asset_returns and asset_prices'
+
         self.asset_returns = asset_returns
         self.quantities = quantities
-        self.__asset_prices = asset_prices
-        #self.__weights = weights
+        self.asset_prices = asset_prices
+        self.weights = weights
 
 
     @property
@@ -337,23 +341,74 @@ class Portfolio():
         '''
         Sets the contained assets' returns as a FinancialDataFrame.
         '''
+        if return_data is None:
+            return_data = FinancialDataFrame(return_data)
 
-        return_data = FinancialDataFrame(return_data)
+            if type(return_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
+                return_data = return_data.stack().to_frame()
 
-        if type(return_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
-            return_data = return_data.stack().to_frame()
-
-        return_data = return_data.squeeze().rename('return').sort_index()
+            return_data = return_data.squeeze().rename('return').sort_index()
 
         self.__asset_returns = return_data
 
 
-    @property
-    def asset_prices(self):
+    def infer_returns(self):
 
         '''
-        Returns a FinancialSeries of prices corresponding to the POrtfolio's asset_returns.
+        Sets asset_returns inferred from asset_prices inplace.
         '''
+
+        assert self.asset_prices is not None,\
+            'asset_prices unavailable'
+
+        if self.asset_returns is not None:
+            warnings.warn('asset_returns will be overridden')
+
+        asset_returns = FinancialSeries(index=self.asset_prices.index)
+        for asset in self.assets:
+            index = self.asset_prices.index.get_level_values(1)==asset
+            asset_returns.loc[index] = FinancialSeries(self.asset_prices.loc[index].squeeze())\
+                                            .set_obstype('return')\
+                                            .to_returns()
+        asset_returns = asset_returns.rename('return')
+
+        self.__asset_returns = asset_returns
+
+
+
+    @property
+    def asset_prices(self):
+        return self.__asset_prices
+
+
+    @asset_prices.setter
+    def asset_prices(self, price_data):
+
+        '''
+        Returns a FinancialSeries of prices corresponding to the Portfolio's asset_returns.
+        '''
+        if price_data is not None:
+            price_data = FinancialDataFrame(price_data)
+
+            if type(price_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
+                price_data = price_data.stack().to_frame()
+
+            price_data = price_data.squeeze().rename('price').sort_index()
+
+        self.__asset_prices = price_data
+
+
+    def infer_prices(self):
+
+        '''
+        Sets asset_prices inferred from asset_returns inplace.
+        '''
+
+        assert self.asset_returns is not None,\
+            'asset_returns unavailable'
+
+        if self.asset_prices is not None:
+            warnings.warn('asset_prices will be overridden')
 
         asset_prices = FinancialSeries(index=self.asset_returns.index)
         for asset in self.assets:
@@ -362,8 +417,8 @@ class Portfolio():
                                             .set_obstype('return')\
                                             .to_prices()
         asset_prices = asset_prices.rename('price')
+
         self.__asset_prices = asset_prices
-        return asset_prices
 
 
     @property
@@ -371,22 +426,61 @@ class Portfolio():
         return self.__quantities
 
     @quantities.setter
-    def quantities(self, quantities):
+    def quantities(self, quantity_data):
 
         '''
         Sets returns weighting data as long format FinancialSeries.
         Drops missing observations.
         '''
 
-        if quantities is not None:
-            if type(quantities.index) == pd.core.indexes.datetimes.DatetimeIndex:
-                quantities = quantities.stack()#.to_frame()
+        if quantity_data is not None:
+            quantity_data = FinancialDataFrame(quantity_data)
 
-            assert type(quantities.index) == pd.core.indexes.multi.MultiIndex,\
-                'Need to supply panel data as sorting variable'
+            if type(quantity_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
+                quantity_data = quantity_data.stack()#.to_frame()
 
-            quantities = FinancialSeries(quantities).dropna().sort_index().rename('quantity')
-        self.__quantities = quantities
+            quantity_data = quantity_data.squeeze().dropna().rename('quantity').sort_index()
+        self.__quantities = quantity_data
+
+
+    def infer_quantities(self): # TO BE IMPLEMENTED
+        pass
+
+
+    @property
+    def weights(self):
+        return self.__weights
+
+
+    @weights.setter
+    def weights(self, weight_data):
+
+        '''
+
+        '''
+
+        if weight_data is not None:
+            weight_data = FinancialDataFrame(weight_data)
+
+            if type(weight_data.index) == pd.core.indexes.datetimes.DatetimeIndex:
+                weight_data = weight_data.stack().to_frame()
+
+            weight_data = weight_data.squeeze().rename('weight').sort_index()
+
+        self.__weights = weight_data
+
+
+    def infer_weights(self):
+
+        '''
+
+        '''
+
+        assert self.quantities is not None,\
+            'quantities unavailable'
+
+        weights = self.scale_quantities(1).quantities
+        return weights
 
 
     @property
@@ -395,8 +489,12 @@ class Portfolio():
         '''
         Returns a list of assets in the portfolio.
         '''
+        if self.__asset_returns is not None:
+            asset_list = list(self.asset_returns.index.get_level_values(1).unique())
+        else:
+            asset_list = list(self.asset_prices.index.get_level_values(1).unique())
 
-        return list(self.asset_returns.index.get_level_values(1).unique())
+        return asset_list
 
 
     @property
@@ -531,23 +629,6 @@ class Portfolio():
             pf_rebalanced.quantities = self._rebalance_discretely()
 
         return pf_rebalanced
-
-
-
-    @property
-    def weights(self):
-
-        '''
-
-        '''
-
-
-        # infer equal weighting if no weights are provided
-        assert self.quantities is not None,\
-            'quantities required'
-
-        weights = self.scale_quantities(1).quantities
-        return weights
 
 
     @property
