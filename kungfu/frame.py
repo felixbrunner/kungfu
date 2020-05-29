@@ -203,3 +203,18 @@ class FinancialDataFrame(pd.DataFrame):
                                             .set_obstype(obstype)\
                                             .summarise_performance(annual_obs)
         return summary
+
+
+    def plot_corr(self, figsize=None, round=2, annot=True, linewidths=0.5,
+                                            center=0, cmap='RdGy', **kwargs):
+
+        '''
+        Returns a correlation heatmap of the FinancialDataFrame.
+        '''
+
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        fig, ax = plt.subplots(figsize=figsize)
+        sns.heatmap(self.corr().round(round), annot=annot,
+                            linewidths=linewidths, center=center, cmap=cmap)
+        return fig
