@@ -501,6 +501,9 @@ class Portfolio():
         Returns Portfolio object with total weights scaled to 1 in each period.
         '''
 
+        assert self.weights is not None,\
+            'weights unavailable'
+
         total_weights = self.weights\
                                 .groupby(self.weights.index.get_level_values(0))\
                                 .sum()\
