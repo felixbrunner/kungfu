@@ -650,6 +650,7 @@ class Portfolio():
         pf_equal = self.__copy__()
         pf_equal.quantities = FinancialSeries(quantity, index=pd.MultiIndex.from_product([[self.start_date],self.assets],\
                                                                                         names=self.asset_returns.index.names))
+        pf_equal = pf_equal.infer_weights()
         return pf_equal
 
 
@@ -666,6 +667,7 @@ class Portfolio():
         pf_equal.weights = FinancialSeries(1, index=pd.MultiIndex.from_product([[self.start_date],self.assets],\
                                                                                         names=self.asset_returns.index.names))
         pf_equal = pf_equal.scale_weights()
+        pf_equal = pf_equal.infer_quantities()
         return pf_equal
 
 
