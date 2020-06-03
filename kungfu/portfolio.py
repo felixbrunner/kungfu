@@ -446,8 +446,24 @@ class Portfolio():
         self.__quantities = quantity_data
 
 
-    def infer_quantities(self): # TO BE IMPLEMENTED
-        pass
+    def infer_quantities(self, value=1): # EXTEND TO MAKE VALUE DYNAMIC
+
+        '''
+        Sets quantities inferred from weights such that the total value of the portfolio is fixed.
+        '''
+
+        assert self.asset_prices is not None,\
+            'asset_prices unavailable'
+
+        assert self.weights is not None,\
+            'weights unavailable'
+
+        merged_data = self.merged_data
+        quantities = merged_data['weight'] / merged_data['price'] * value
+
+        pf_inferred = self.__copy__()
+        pf_inferred.quantities = quantities.rename('quantity')
+        return pf_inferred
 
 
     @property
@@ -601,6 +617,8 @@ class Portfolio():
 
         pf_lagged = self.__copy__()
         pf_lagged.quantities = lagged_quantities
+        if pf_lagged.weights is not None:
+            pf_lagged = pf_lagged.lag_weights(lags=lags)
         return pf_lagged
 
 
@@ -615,6 +633,8 @@ class Portfolio():
 
         pf_lagged = self.__copy__()
         pf_lagged.weights = lagged_weigts
+        if pf_lagged.quantities is not None:
+            pf_lagged = pf_lagged.lag_quantities(lags=lags)
         return pf_lagged
 
 
@@ -727,7 +747,8 @@ class Portfolio():
                                 groupby(returns.index.get_level_values(0))\
                                 .sum()
         portfolio_returns = FinancialSeries(portfolio_returns)\
-                                .set_obstype('return')
+                                .set_obstype('return')\
+                                .rename('return')
         return portfolio_returns
 
 

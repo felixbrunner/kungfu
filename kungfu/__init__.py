@@ -9,3 +9,4 @@ from kungfu.series import FinancialSeries
 from kungfu.frame import FinancialDataFrame
 from kungfu.factor import FactorModel
 from kungfu.table import RegressionTable
+from kungfu.portfolio import Portfolio
