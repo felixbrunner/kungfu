@@ -359,6 +359,9 @@ class Portfolio():
         Sets the contained assets' returns as a FinancialDataFrame.
         '''
 
+        if hasattr(self, 'asset_returns') and self.asset_returns is not None:
+            warnings.warn('asset_returns will be overridden')
+
         if return_data is not None:
             return_data = self._prepare_data(return_data).rename('return')
         self.__asset_returns = return_data
@@ -372,9 +375,6 @@ class Portfolio():
 
         assert self.asset_prices is not None,\
             'asset_prices unavailable'
-
-        if self.asset_returns is not None:
-            warnings.warn('asset_returns will be overridden')
 
         asset_returns = FinancialSeries(index=self.asset_prices.index)
         for asset in self.assets:
@@ -400,6 +400,9 @@ class Portfolio():
         Returns a FinancialSeries of prices corresponding to the Portfolio's asset_returns.
         '''
 
+        if hasattr(self, 'asset_prices') and self.asset_prices is not None:
+            warnings.warn('asset_prices will be overridden')
+
         if price_data is not None:
             price_data = self._prepare_data(price_data).rename('price')
         self.__asset_prices = price_data
@@ -413,9 +416,6 @@ class Portfolio():
 
         assert self.asset_returns is not None,\
             'asset_returns unavailable'
-
-        if self.asset_prices is not None:
-            warnings.warn('asset_prices will be overridden')
 
         asset_prices = FinancialSeries(index=self.asset_returns.index)
         for asset in self.assets:
@@ -440,6 +440,9 @@ class Portfolio():
         Sets returns weighting data as long format FinancialSeries.
         Drops missing observations.
         '''
+
+        if hasattr(self, 'quantities') and self.quantities is not None:
+            warnings.warn('quantities will be overridden')
 
         if quantity_data is not None:
             quantity_data = self._prepare_data(quantity_data).dropna().rename('quantity')
@@ -478,6 +481,9 @@ class Portfolio():
         Sets quantity data as long format FinancialSeries.
         Drops missing observations.
         '''
+
+        if hasattr(self, 'weights') and self.weights is not None:
+            warnings.warn('weights will be overridden')
 
         if weight_data is not None:
             weight_data = self._prepare_data(weight_data).dropna().rename('weight')
@@ -644,9 +650,6 @@ class Portfolio():
         Sets qunatities such that each asset has a quantity of 1 at the beginning of the sample.
         '''
 
-        if self.quantities is not None:
-            warnings.warn('quantities will be overriden')
-
         pf_equal = self.__copy__()
         pf_equal.quantities = FinancialSeries(quantity, index=pd.MultiIndex.from_product([[self.start_date],self.assets],\
                                                                                         names=self.asset_returns.index.names))
@@ -660,13 +663,11 @@ class Portfolio():
         Sets qunatities such that each asset has equal weight at the beginning of the sample.
         '''
 
-        if self.weights is not None:
-            warnings.warn('weights will be overriden')
-
         pf_equal = self.__copy__()
         pf_equal.weights = FinancialSeries(1, index=pd.MultiIndex.from_product([[self.start_date],self.assets],\
                                                                                         names=self.asset_returns.index.names))
-        pf_equal = pf_equal.scale_weights()
+        with warnings.catch_warnings(record=True) as w:
+            pf_equal = pf_equal.scale_weights()
         pf_equal = pf_equal.infer_quantities()
         return pf_equal
 
@@ -688,8 +689,7 @@ class Portfolio():
                                 .fillna(method='ffill', **kwargs)
 
         pf_rebalanced.weights = filled_weights
-        #if pf_rebalanced.quantities is not None:
-        #    pf_rebalanced = pf_rebalanced.infer_quantities()
+        pf_rebalanced = pf_rebalanced.infer_quantities()
         return pf_rebalanced
 
 
@@ -710,6 +710,7 @@ class Portfolio():
                                     .fillna(method='ffill', **kwargs)
 
         pf_rebalanced.quantities = filled_quantities
+        pf_rebalanced = pf_rebalanced.infer_weights()
         return pf_rebalanced
 
 
