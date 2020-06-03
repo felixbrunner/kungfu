@@ -359,6 +359,9 @@ class Portfolio():
         Sets the contained assets' returns as a FinancialDataFrame.
         '''
 
+        if self.asset_returns is not None:
+            warnings.warn('asset_returns will be overridden')
+
         if return_data is not None:
             return_data = self._prepare_data(return_data).rename('return')
         self.__asset_returns = return_data
@@ -372,9 +375,6 @@ class Portfolio():
 
         assert self.asset_prices is not None,\
             'asset_prices unavailable'
-
-        if self.asset_returns is not None:
-            warnings.warn('asset_returns will be overridden')
 
         asset_returns = FinancialSeries(index=self.asset_prices.index)
         for asset in self.assets:
@@ -400,6 +400,9 @@ class Portfolio():
         Returns a FinancialSeries of prices corresponding to the Portfolio's asset_returns.
         '''
 
+        if self.asset_prices is not None:
+            warnings.warn('asset_prices will be overridden')
+
         if price_data is not None:
             price_data = self._prepare_data(price_data).rename('price')
         self.__asset_prices = price_data
@@ -413,9 +416,6 @@ class Portfolio():
 
         assert self.asset_returns is not None,\
             'asset_returns unavailable'
-
-        if self.asset_prices is not None:
-            warnings.warn('asset_prices will be overridden')
 
         asset_prices = FinancialSeries(index=self.asset_returns.index)
         for asset in self.assets:
@@ -440,6 +440,9 @@ class Portfolio():
         Sets returns weighting data as long format FinancialSeries.
         Drops missing observations.
         '''
+
+        if self.qunatities is not None:
+            warnings.warn('quantities will be overridden')
 
         if quantity_data is not None:
             quantity_data = self._prepare_data(quantity_data).dropna().rename('quantity')
@@ -478,6 +481,9 @@ class Portfolio():
         Sets quantity data as long format FinancialSeries.
         Drops missing observations.
         '''
+
+        if self.weights is not None:
+            warnings.warn('weights will be overridden')
 
         if weight_data is not None:
             weight_data = self._prepare_data(weight_data).dropna().rename('weight')
