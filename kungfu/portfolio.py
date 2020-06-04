@@ -359,11 +359,7 @@ class Portfolio():
         Sets the contained assets' returns as a FinancialDataFrame.
         '''
 
-<<<<<<< HEAD
         if hasattr(self, 'asset_returns') and self.asset_returns is not None:
-=======
-        if self.asset_returns is not None:
->>>>>>> ca5705722e3f33716b36842fc9943a74b59c52cd
             warnings.warn('asset_returns will be overridden')
 
         if return_data is not None:
@@ -404,11 +400,7 @@ class Portfolio():
         Returns a FinancialSeries of prices corresponding to the Portfolio's asset_returns.
         '''
 
-<<<<<<< HEAD
         if hasattr(self, 'asset_prices') and self.asset_prices is not None:
-=======
-        if self.asset_prices is not None:
->>>>>>> ca5705722e3f33716b36842fc9943a74b59c52cd
             warnings.warn('asset_prices will be overridden')
 
         if price_data is not None:
@@ -449,11 +441,7 @@ class Portfolio():
         Drops missing observations.
         '''
 
-<<<<<<< HEAD
         if hasattr(self, 'quantities') and self.quantities is not None:
-=======
-        if self.qunatities is not None:
->>>>>>> ca5705722e3f33716b36842fc9943a74b59c52cd
             warnings.warn('quantities will be overridden')
 
         if quantity_data is not None:
@@ -494,11 +482,7 @@ class Portfolio():
         Drops missing observations.
         '''
 
-<<<<<<< HEAD
         if hasattr(self, 'weights') and self.weights is not None:
-=======
-        if self.weights is not None:
->>>>>>> ca5705722e3f33716b36842fc9943a74b59c52cd
             warnings.warn('weights will be overridden')
 
         if weight_data is not None:
