@@ -221,11 +221,11 @@ def sort_longshort(return_data, sorting_data, quantity=0.3, lag=1,
     return_data = _prepare_return_data(return_data)
     sorting_data = _prepare_sorting_data(sorting_data)
 
-    if method is 'percentage':
+    if method == 'percentage':
         assert 0 <= quantity <= 1, 'quantity needs to be between 0 and 1'
         selection = _select_percentage(sorting_data, quantity)
 
-    elif method is 'fixed':
+    elif method == 'fixed':
         assert quantity <= len(return_data.index.get_level_values(0).unique()),\
             'quantity needs to be less or equal to the number of assets'
         selection = _select_fixed(sorting_data, quantity)
@@ -723,9 +723,9 @@ class Portfolio():
         assert method in ['discrete', 'continuous'],\
             'method must be either discrete or continuous'
 
-        if method is 'continuous':
+        if method == 'continuous':
             pf_rebalanced = self._rebalance_continuously()
-        elif method is 'discrete':
+        elif method == 'discrete':
             pf_rebalanced = self._rebalance_discretely()
 
         return pf_rebalanced
