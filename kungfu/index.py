@@ -7,6 +7,7 @@ from kungfu.frame import FinancialDataFrame
 from kungfu.series import FinancialSeries
 
 '''
+deprecated module
 '''
 
 
