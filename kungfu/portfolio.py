@@ -172,9 +172,9 @@ def sort_portfolios(return_data, sorting_data, n_sorts=10, lag=1,
     if type(n_sorts) == int:
         n_sorts = [n_sorts for col in sorting_data.columns]
 
-    if method is 'simultaneous':
+    if method == 'simultaneous':
         portfolio_bins = _bin_simultaneously(sorting_data, n_sorts)
-    elif method is 'sequential':
+    elif method == 'sequential':
         portfolio_bins = _bin_sequentially(sorting_data, n_sorts)
 
     # merge
