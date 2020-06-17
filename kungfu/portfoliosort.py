@@ -21,8 +21,8 @@ class PortfolioSort(Portfolio):
     def __init__(self, asset_returns=None, sorting_data=None, weights=None,
                                         quantities=None, asset_prices=None):
 
-        Portfolio.__init__(self, asset_returns=None, weights=None,
-                                        quantities=None, asset_prices=None)
+        Portfolio.__init__(self, asset_returns=asset_returns, weights=weights,
+                            quantities=quantities, asset_prices=asset_prices)
         '''assert (asset_returns is not None) != (asset_prices is not None),\
             'need to supply exactly one of asset_returns and asset_prices' '''
 
@@ -32,21 +32,6 @@ class PortfolioSort(Portfolio):
         #self.asset_prices = asset_prices
         #self.quantities = quantities
 
-
-    def _prepare_data(self, data):
-
-        '''
-        Returns formatted data to be set as portfolio properties.
-        '''
-
-        data = FinancialDataFrame(data)
-
-        if type(data.index) == pd.core.indexes.datetimes.DatetimeIndex:
-            data = data.stack().to_frame()
-
-        data = data.squeeze().sort_index()
-
-        return data
 
 
 ####### LEGACY CODE ##################################
