@@ -11,22 +11,26 @@ import warnings
 import copy
 
 
-class PortfolioSort():
+class PortfolioSort(Portfolio):
 
     '''
     Class to hold a portfolio sort of assets.
     All inputs should have pandas MultiIndex as index with time index as level 0 and asset index as level 1.
     '''
 
-    def __init__(self, asset_returns=None, sorting_data=None, weights=None, asset_prices=None):
+    def __init__(self, asset_returns=None, sorting_data=None, weights=None,
+                                        quantities=None, asset_prices=None):
 
-        assert (asset_returns is not None) != (asset_prices is not None),\
-            'need to supply exactly one of asset_returns and asset_prices'
+        Portfolio.__init__(self, asset_returns=None, weights=None,
+                                        quantities=None, asset_prices=None)
+        '''assert (asset_returns is not None) != (asset_prices is not None),\
+            'need to supply exactly one of asset_returns and asset_prices' '''
 
-        self.asset_returns = asset_returns
+        #self.asset_returns = asset_returns
         self.sorting_data = sorting_data
-        self.asset_prices = asset_prices
-        self.weights = weights
+        #self.weights = weights
+        #self.asset_prices = asset_prices
+        #self.quantities = quantities
 
 
     def _prepare_data(self, data):
@@ -43,6 +47,7 @@ class PortfolioSort():
         data = data.squeeze().sort_index()
 
         return data
+
 
 ####### LEGACY CODE ##################################
 
