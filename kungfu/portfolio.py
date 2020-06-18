@@ -31,15 +31,16 @@ class Portfolio():
         assert (asset_returns is not None) != (asset_prices is not None),\
             'need to supply exactly one of asset_returns and asset_prices'
 
-        self.__asset_returns = None
-        self.__quantities = None
-        self.__asset_prices = None
-        self.__weights = None
+        #self.__asset_returns = None
+        #self.__quantities = None
+        #self.__asset_prices = None
+        #self.__weights = None
 
-        self.asset_returns = asset_returns
-        self.quantities = quantities
-        self.asset_prices = asset_prices
-        self.weights = weights
+        self.asset_returns = (asset_returns, False)
+        self.quantities = (quantities, False)
+        self.asset_prices = (asset_prices, False)
+        self.weights = (weights, False)
+        self._update_merged_data()
 
 
     def _prepare_data(self, data):
@@ -69,13 +70,21 @@ class Portfolio():
         Sets the contained assets' returns as a FinancialDataFrame.
         '''
 
+        # unpack if a tuple is passed
+        try:
+             return_data, set_merged = return_data
+        except ValueError:
+             set_merged = True
+
         if hasattr(self, 'asset_returns') and self.asset_returns is not None:
             warnings.warn('asset_returns will be overridden')
 
         if return_data is not None:
             return_data = self._prepare_data(return_data).rename('return')
         self.__asset_returns = return_data
-        self._update_merged_data()
+
+        if set_merged:
+            self._update_merged_data()
 
 
     def infer_returns(self):
@@ -111,13 +120,21 @@ class Portfolio():
         Returns a FinancialSeries of prices corresponding to the Portfolio's asset_returns.
         '''
 
+        # unpack if a tuple is passed
+        try:
+             price_data, set_merged = price_data
+        except ValueError:
+             set_merged = True
+
         if hasattr(self, 'asset_prices') and self.asset_prices is not None:
             warnings.warn('asset_prices will be overridden')
 
         if price_data is not None:
             price_data = self._prepare_data(price_data).rename('price')
         self.__asset_prices = price_data
-        self._update_merged_data()
+
+        if set_merged:
+            self._update_merged_data()
 
 
     def infer_prices(self):
@@ -153,13 +170,21 @@ class Portfolio():
         Drops missing observations.
         '''
 
+        # unpack if a tuple is passed
+        try:
+             quantity_data, set_merged = quantity_data
+        except ValueError:
+             set_merged = True
+
         if hasattr(self, 'quantities') and self.quantities is not None:
             warnings.warn('quantities will be overridden')
 
         if quantity_data is not None:
             quantity_data = self._prepare_data(quantity_data).dropna().rename('quantity')
         self.__quantities = quantity_data
-        self._update_merged_data()
+
+        if set_merged:
+            self._update_merged_data()
 
 
     def infer_quantities(self, value=1): # EXTEND TO MAKE VALUE DYNAMIC
@@ -195,13 +220,21 @@ class Portfolio():
         Drops missing observations.
         '''
 
+        # unpack if a tuple is passed
+        try:
+             weight_data, set_merged = weight_data
+        except ValueError:
+             set_merged = True
+
         if hasattr(self, 'weights') and self.weights is not None:
             warnings.warn('weights will be overridden')
 
         if weight_data is not None:
             weight_data = self._prepare_data(weight_data).dropna().rename('weight')
         self.__weights = weight_data
-        self._update_merged_data()
+
+        if set_merged:
+            self._update_merged_data()
 
 
     def infer_weights(self):
