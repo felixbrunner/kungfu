@@ -31,6 +31,11 @@ class Portfolio():
         assert (asset_returns is not None) != (asset_prices is not None),\
             'need to supply exactly one of asset_returns and asset_prices'
 
+        self.__asset_returns = None
+        self.__quantities = None
+        self.__asset_prices = None
+        self.__weights = None
+
         self.asset_returns = asset_returns
         self.quantities = quantities
         self.asset_prices = asset_prices
@@ -70,7 +75,7 @@ class Portfolio():
         if return_data is not None:
             return_data = self._prepare_data(return_data).rename('return')
         self.__asset_returns = return_data
-        self.merged_data = self._merge_data
+        self._update_merged_data()
 
 
     def infer_returns(self):
@@ -112,7 +117,7 @@ class Portfolio():
         if price_data is not None:
             price_data = self._prepare_data(price_data).rename('price')
         self.__asset_prices = price_data
-        self.merged_data = self._merge_data
+        self._update_merged_data()
 
 
     def infer_prices(self):
@@ -154,7 +159,7 @@ class Portfolio():
         if quantity_data is not None:
             quantity_data = self._prepare_data(quantity_data).dropna().rename('quantity')
         self.__quantities = quantity_data
-        self.merged_data = self._merge_data
+        self._update_merged_data()
 
 
     def infer_quantities(self, value=1): # EXTEND TO MAKE VALUE DYNAMIC
@@ -196,7 +201,7 @@ class Portfolio():
         if weight_data is not None:
             weight_data = self._prepare_data(weight_data).dropna().rename('weight')
         self.__weights = weight_data
-        self.merged_data = self._merge_data
+        self._update_merged_data()
 
 
     def infer_weights(self):
@@ -295,20 +300,18 @@ class Portfolio():
         return merged_data
 
 
+    def _update_merged_data(self):
+
+        '''
+        Updates the internally stored combined data.
+        '''
+
+        self.__merged_data = self._merge_data()
+
+
     @property
     def merged_data(self):
         return self.__merged_data
-
-    @property.setter
-    def merged_data(self):
-
-        '''
-        Sets merged data property by combining all data saved in the Portfolio
-        object.
-        '''
-
-        merged_data = self._merge_data
-        self.__merged_data = merged_data
 
 
     @property
