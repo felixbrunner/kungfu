@@ -31,11 +31,6 @@ class Portfolio():
         assert (asset_returns is not None) != (asset_prices is not None),\
             'need to supply exactly one of asset_returns and asset_prices'
 
-        #self.__asset_returns = None
-        #self.__quantities = None
-        #self.__asset_prices = None
-        #self.__weights = None
-
         self.asset_returns = (asset_returns, False)
         self.quantities = (quantities, False)
         self.asset_prices = (asset_prices, False)
@@ -293,6 +288,12 @@ class Portfolio():
         '''
         Returns a FinancialSeries that contains portfolio values.
         '''
+
+        assert self.asset_prices is not None,\
+            'asset_prices unavailable'
+
+        assert self.quantities is not None,\
+            'quantities unavailable'
 
         merged_data = self.merged_data
         asset_values = merged_data['price'] * merged_data['quantity']
