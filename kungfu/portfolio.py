@@ -68,7 +68,7 @@ class Portfolio():
         # unpack if a tuple is passed
         try:
              return_data, set_merged = return_data
-        except ValueError:
+        except (ValueError, TypeError) as e:
              set_merged = True
 
         if hasattr(self, 'asset_returns') and self.asset_returns is not None:
@@ -118,7 +118,7 @@ class Portfolio():
         # unpack if a tuple is passed
         try:
              price_data, set_merged = price_data
-        except ValueError:
+        except (ValueError, TypeError) as e:
              set_merged = True
 
         if hasattr(self, 'asset_prices') and self.asset_prices is not None:
@@ -168,7 +168,7 @@ class Portfolio():
         # unpack if a tuple is passed
         try:
              quantity_data, set_merged = quantity_data
-        except ValueError:
+        except (ValueError, TypeError) as e:
              set_merged = True
 
         if hasattr(self, 'quantities') and self.quantities is not None:
@@ -188,18 +188,29 @@ class Portfolio():
         Sets quantities inferred from weights such that the total value of the portfolio is fixed.
         '''
 
-        assert self.asset_prices is not None,\
-            'asset_prices unavailable'
-
         assert self.weights is not None,\
             'weights unavailable'
 
-        merged_data = self.merged_data
-        quantities = merged_data['weight'] / merged_data['price'] * value
+        #assert self.asset_prices is not None,\
+        #    'asset_prices unavailable'
 
+        # create output object
         pf_inferred = self.__copy__()
+
+
+        if pf_inferred.asset_prices is None:
+            pf_inferred = pf_inferred.infer_prices()
+
+        merged_data = pf_inferred.merged_data
+
+        quantities = merged_data['weight'] / merged_data['price'] * value
         pf_inferred.quantities = quantities.rename('quantity')
+
+        #self.quantities = pf_rebalanced.weights.copy()
+
         return pf_inferred
+
+
 
 
     @property
@@ -218,7 +229,7 @@ class Portfolio():
         # unpack if a tuple is passed
         try:
              weight_data, set_merged = weight_data
-        except ValueError:
+        except (ValueError, TypeError) as e:
              set_merged = True
 
         if hasattr(self, 'weights') and self.weights is not None:
@@ -380,12 +391,17 @@ class Portfolio():
         Lags are based on the index of the asset_returns data.
         '''
 
+        # lag
         lagged_quantities = self.merged_data['quantity'].unstack().shift(lags).stack()
 
+        # create output
         pf_lagged = self.__copy__()
         pf_lagged.quantities = lagged_quantities
+
+        # align weights
         if pf_lagged.weights is not None:
             pf_lagged = pf_lagged.lag_weights(lags=lags)
+
         return pf_lagged
 
 
@@ -396,12 +412,17 @@ class Portfolio():
         Lags are based on the index of the asset_returns data.
         '''
 
+        # lag
         lagged_weigts = self.merged_data['weight'].unstack().shift(lags).stack()
 
+        # create output
         pf_lagged = self.__copy__()
         pf_lagged.weights = lagged_weigts
+
+        # align quantities
         if pf_lagged.quantities is not None:
             pf_lagged = pf_lagged.lag_quantities(lags=lags)
+
         return pf_lagged
 
 
@@ -411,25 +432,38 @@ class Portfolio():
         Sets qunatities such that each asset has a quantity of 1 at the beginning of the sample.
         '''
 
+        # create output
         pf_equal = self.__copy__()
-        pf_equal.quantities = FinancialSeries(quantity, index=pd.MultiIndex.from_product([[self.start_date],self.assets],\
-                                                                                        names=self.asset_returns.index.names))
+        pf_equal.quantities = FinancialSeries(quantity, index=pd.MultiIndex\
+                                .from_product([[self.start_date],self.assets],\
+                                        names=self.asset_returns.index.names))
+
+        # make weights consistent
         pf_equal = pf_equal.infer_weights()
+
         return pf_equal
 
 
-    def set_equal_weights(self):
+    def set_equal_weights(self, infer_quantities=False):
 
         '''
-        Sets qunatities such that each asset has equal weight at the beginning of the sample.
+        Sets weights such that each asset has the same weight at the beginning of the sample.
         '''
 
+        # create output
         pf_equal = self.__copy__()
-        pf_equal.weights = FinancialSeries(1, index=pd.MultiIndex.from_product([[self.start_date],self.assets],\
-                                                                                        names=self.asset_returns.index.names))
-        with warnings.catch_warnings(record=True) as w:
+        pf_equal.weights = FinancialSeries(1, index=pd.MultiIndex\
+                                .from_product([[self.start_date],self.assets],\
+                                        names=self.asset_returns.index.names))
+        with warnings.catch_warnings(record=True) as w: #catch reset warning
             pf_equal = pf_equal.scale_weights()
-        pf_equal = pf_equal.infer_quantities()
+
+        # make quantities consistent
+        if infer_quantities:
+            pf_equal = pf_equal.infer_quantities()
+        else:
+            pf_equal.quantities = None
+
         return pf_equal
 
 
@@ -439,18 +473,23 @@ class Portfolio():
         Returns quantities with missing quantities filled through continuous rebalancing.
         '''
 
+        # create output
         pf_rebalanced = self.__copy__()
 
+        # get weights if unavailable
         if pf_rebalanced.weights is None:
             pf_rebalanced = pf_rebalanced.infer_weights()
 
+        # forward fill weights
         merged_data = pf_rebalanced.merged_data
         filled_weights = merged_data['weight']\
                                 .groupby(merged_data.index.get_level_values(1))\
                                 .fillna(method='ffill', **kwargs)
-
         pf_rebalanced.weights = filled_weights
+
+        # make quantities consistent
         pf_rebalanced = pf_rebalanced.infer_quantities()
+
         return pf_rebalanced
 
 
@@ -460,18 +499,23 @@ class Portfolio():
         Returns quantities with missing quantities filled through rebalancing at dates given by the quantity data.
         '''
 
+        # create output
         pf_rebalanced = self.__copy__()
 
+        #get quantities if unavailable
         if pf_rebalanced.quantities is None:
             pf_rebalanced.quantities = pf_rebalanced.weights.copy()
 
+        # forward fill quantities
         merged_data = pf_rebalanced.merged_data
         filled_quantities = merged_data['quantity']\
                                     .groupby(merged_data.index.get_level_values(1))\
                                     .fillna(method='ffill', **kwargs)
-
         pf_rebalanced.quantities = filled_quantities
+
+        # make weights consistent
         pf_rebalanced = pf_rebalanced.infer_weights()
+
         return pf_rebalanced
 
 
@@ -557,6 +601,41 @@ class Portfolio():
         return turnover
 
 
+    @property
+    def summary(self, annual_obs=1):
+
+        '''
+        Summarises the performance of the portfolio as is.
+        '''
+
+        summary = self.returns.summarise_performance(annual_obs=annual_obs)
+        return summary
+
+
+    def _prepare_sort():
+        pass
+
+
+    def _bin_sequentially():
+        pass
+
+
+    def _bin_simultaneously():
+        pass
+
+
+    def _generate_portfolio_names():
+        pass
+
+
+    def sort(self, sorting_data):
+        pass
+        return PortfolioSet
+
+
+    def sort_longshort():
+        pass
+        return Portfolio
 
 
 ################################################################################
