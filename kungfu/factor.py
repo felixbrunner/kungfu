@@ -1,277 +1,526 @@
-import scipy as sp
-import pandas as pd
-import numpy as np
+"""
+This module provides functions to carry out factor analysis.
 
-import statsmodels.api as sm
-import matplotlib.pyplot as plt
+Classes:
+    FactorModel
+
+"""
 
 import warnings
 
-from kungfu.frame import FinancialDataFrame
-from kungfu.series import FinancialSeries
-
-'''
-TO DO:
-- Ensure data is of obstype return
-'''
+import numpy as np
+import scipy as sp
+import pandas as pd
+import matplotlib.pyplot as plt
 
 
-def _prepare_asset_data(asset_data):
+class FactorModel:
+    """Financial linear factor model.
 
-    '''
-    Returns asset timeseries data as a DataFrame in wide format.
-    '''
+    Attributes:
+        factor_data: The factor data index by DatetimeIndex.
+        is_fitted: Indicates if model is fitted to asset returns data.
 
-    if type(asset_data.index) == pd.core.indexes.multi.MultiIndex:
-        assert len(asset_data.columns) == 1,\
-            'too many columns, supply only return data'
-        asset_data = asset_data.unstack()
+    """
 
-    assert type(asset_data.index) == pd.core.indexes.datetimes.DatetimeIndex,\
-        'time index of supplied data needs to be pandas.DatetimeIndex'
-
-    if type(asset_data) == pd.core.series.Series:
-        asset_data = asset_data.to_frame()
-
-    return asset_data
-
-
-def _prepare_factor_data(factor_data):
-
-    '''
-    Returns factor timeseries data as a DataFrame in wide format.
-    '''
-
-    assert type(factor_data.index) == pd.core.indexes.datetimes.DatetimeIndex,\
-        'index of supplied data needs to be pandas.DatetimeIndex'
-
-    if isinstance(factor_data, pd.Series):
-        factor_data = factor_data.to_frame()
-
-    return factor_data
-
-
-def _combine_data(factor_data, asset_data):
-
-    '''
-    Returns a joined DataFrame that contains aligned asset data and factor data.
-    '''
-
-    factor_data = _prepare_factor_data(factor_data)
-    asset_data = _prepare_asset_data(asset_data)
-
-    combined_data = asset_data.merge(factor_data, how='left',
-                    left_index=True, right_index=True)
-
-    return combined_data
-
-
-class FactorModel():
-
-    '''
-    FactorModel class for the estimation and testing of linear factor models as
-    in the asset pricing academic literature.
-    '''
-
-    def __init__(self, factor_data):
-        self.factor_data = _prepare_factor_data(factor_data)
-        self.factor_names = list(self.factor_data.columns)
-
-
-    def fit(self, asset_data):
-
-        '''
-        Fit the factor model to a set of assets and return the results.
-        '''
-
-        asset_data = _prepare_asset_data(asset_data)
-        asset_names = list(asset_data.columns)
-
-        data = _combine_data(self.factor_data, asset_data)
-
-        results = FactorModelResults(self.factor_names, asset_names,
-                                        data.index)
-        results.asset_means = asset_data.mean()
-        results.factor_means = self.factor_data.mean()
-
-        for asset in asset_names:
-            estimate = sm.OLS(data[asset],
-                            sm.add_constant(data[self.factor_names]),
-                            missing='drop')\
-                        .fit()
-            results.alphas.at[asset] = estimate.params['const']
-            results.alphas_se.at[asset] = estimate.bse['const']
-            results.betas.loc[asset,self.factor_names] = \
-                                    estimate.params[self.factor_names].values
-            results.betas_se.loc[asset,self.factor_names] = \
-                                    estimate.bse[self.factor_names].values
-            results.residuals.loc[estimate.resid.index, asset] = estimate.resid.values
-            results.idiosyncratic_volas.at[asset] = estimate.mse_resid**0.5
-            results.r_squares.at[asset] = estimate.rsquared
-
-        return results
-
-
-    def calculate_grs_test(self, asset_data):
-
-        '''
-        Returns the GRS test statistic and its corresponding p-Value for
-        testing a cross-sectional asset-pricing model as in
-        Gibbons/Ross/Shanken (1989).
-
-        Hypothesis: alpha1 = alpha2 = ... = alphaN = 0
-        That is if the alphas from N time series regressions on N test assets
-        are jointly zero.
-
-        Based on Cochrane (2001) Chapter 12.1
-        '''
-
-        asset_data = _prepare_asset_data(asset_data)
-
-        # dimensions
-        T = len(asset_data)
-        N = len(asset_data.columns)
-        K = len(self.factor_names)
-
-        # factor timeseries means and VCV
-        factor_means = np.matrix(self.factor_data.mean()).T
-        factor_vcv = np.matrix(self.factor_data.cov())
-
-        # timeseries regressions
-        ts_regressions = self.fit(asset_data)
-        alphas = np.matrix(ts_regressions.alphas).T
-        residuals = ts_regressions.residuals
-
-        # asset VCV
-        asset_vcv = (T-1)/(T-1-K)*np.matrix(residuals.cov())
-
-        # GRS F-statistic
-        f_statistic = (T-N-K)/N \
-                *(1+factor_means.T*np.linalg.pinv(factor_vcv)*factor_means)**-1\
-                *alphas.T*np.linalg.pinv(asset_vcv)*alphas
-
-        # p-Value for GRS statistic: GRS ~ F(N,T-N-K)
-        p_value = 1-sp.stats.f.cdf(f_statistic, N, T-N-K)
-
-        return f_statistic.item(), p_value.item()
-
-
-class FactorModelResults():
-
-    '''
-    Class to hold factor model results:
-    - alphas
-    - betas
-    - pricing errors (residuals)
-    '''
-
-    def __init__(self, factor_names, asset_names, timeline):
-        self.factor_names = factor_names
-        self.asset_names = asset_names
-        self.timeline = timeline
-        self.alphas = FinancialSeries(dtype='float', index=asset_names, name='alpha')
-        self.alphas_se = FinancialSeries(dtype='float', index=asset_names, name='alpha_se')
-        self.betas = FinancialDataFrame(dtype='float', index=asset_names, columns=self.factor_names)
-        self.betas_se = FinancialDataFrame(dtype='float', index=asset_names, columns=self.factor_names)
-        self.residuals = FinancialDataFrame(dtype='float', index=timeline, columns=asset_names)
-        self.idiosyncratic_volas = FinancialSeries(dtype='float', index=asset_names,
-                                                name='idiosyncratic_volatility')
-        self.r_squares = FinancialSeries(dtype='float', index=asset_names, name='r_squared')
-        self.asset_means = None
-        self.factor_means = None
-
+    def __init__(self, factor_data: pd.DataFrame):
+        """Store factor data to be used in the model."""
+        self.factor_data = factor_data
+        self.is_fitted = False
 
     @property
-    def estimates(self):
+    def factor_data(self) -> pd.DataFrame:
+        """The factor returns data used in the model as a dataframe."""
+        return self._factor_data
 
-        '''
-        Returns parameter estimates of FactorModelResults as a DataFrame.
-        '''
+    @factor_data.setter
+    def factor_data(self, factor_data: pd.DataFrame):
 
-        estimates = self.alphas.to_frame()\
-                        .merge(self.betas, how='outer',
-                            left_index=True, right_index=True)
-        return estimates
+        # check if data is indexed by datetime
+        if not type(factor_data.index) == pd.DatetimeIndex:
+            raise ValueError(
+                "factor_data needs to have a DatetimeIndex, index has type '{}'".format(
+                    type(factor_data.index)
+                )
+            )
 
+        # transform to dataframe if series
+        if isinstance(factor_data, pd.Series):
+            factor_data = factor_data.to_frame()
+
+        # set attribute
+        self._factor_data = factor_data
 
     @property
-    def expected_returns(self, annual_obs=1):
+    def k_factors(self) -> int:
+        """The number of factors in the factor model."""
+        return self.factor_data.shape[1]
 
-        '''
-        Returns expected returns from the factor model estimates.
-        '''
+    @staticmethod
+    def _preprocess_returns_data(returns_data: pd.DataFrame) -> pd.DataFrame:
+        """Set up returns timeseries data as a DataFrame in wide format.
 
-        expected_returns = self.betas\
-                            .multiply(self.factor_means).sum(axis=1)*annual_obs
+        Args:
+            returns_data: The asset returns data in any DataFrame format.
+
+        Returns:
+            returns_data: The processed returns data in a T by N DataFrame.
+
+        """
+
+        # unstack multiindex
+        if type(returns_data.index) == pd.MultiIndex:
+            if len(returns_data.columns) != 1:
+                raise ValueError("too many columns, supply only return data")
+            returns_data = returns_data.unstack()
+
+        # check if returns data is indexed by datetime
+        if not type(returns_data.index) == pd.DatetimeIndex:
+            raise ValueError(
+                "returns_data needs to have a DatetimeIndex, index has type '{}'".format(
+                    type(returns_data.index)
+                )
+            )
+
+        # transform to dataframe if series
+        if isinstance(returns_data, pd.Series):
+            returns_data = returns_data.to_frame()
+
+        return returns_data
+
+    def _preprocess_factor_data(
+        self, returns_data: pd.DataFrame, add_constant: bool
+    ) -> pd.DataFrame:
+        """Set up factor data to match asset returns data index.
+
+        Args:
+            returns_data: The asset returns data in any DataFrame format.
+            add_constant: Indicates if constant should be included.
+
+        Returns:
+            factor_data: Readily processed factor data in a T by K DataFrame.
+
+        """
+        # set up index and constant
+        factor_data = pd.DataFrame(index=returns_data.index)
+        if add_constant:
+            factor_data["const"] = 1
+
+        # fill in factor data
+        factor_data = factor_data.merge(
+            self.factor_data,
+            how="left",
+            left_index=True,
+            right_index=True,
+        )
+
+        # warn if factor data is missing
+        if factor_data.isna().sum().sum() > 0:
+            warnings.warn(
+                "filling in missing factor observations (out of {}) with zeros: \n{}".format(
+                    len(factor_data), factor_data.isna().sum()
+                )
+            )
+            factor_data = factor_data.fillna(0)
+
+        return factor_data
+
+    def _set_up_attributes(self, returns: pd.DataFrame, factors: pd.DataFrame):
+        """Set up storage arrays for fitting results.
+
+        Args:
+            returns: The preprocessed asset returns data.
+            factors: The preprocessed factor data.
+
+        """
+        # K(+1) times N attributes
+        self._coef_ = pd.DataFrame(index=factors.columns, columns=returns.columns)
+        self._se_ = pd.DataFrame(index=factors.columns, columns=returns.columns)
+        self._factor_means_ = pd.DataFrame(
+            index=factors.columns, columns=returns.columns
+        )
+
+        # N times 1 attributes
+        self._sigma2_ = pd.Series(index=returns.columns, name="sigma2")
+        self._r2_ = pd.Series(index=returns.columns, name="R2")
+        self._asset_means_ = pd.Series(index=returns.columns, name="mean_return")
+
+        # T times N attributes
+        self._fitted_ = pd.DataFrame(index=returns.index, columns=returns.columns)
+        self._resid_ = pd.DataFrame(index=returns.index, columns=returns.columns)
+
+    @staticmethod
+    def _regress(returns_data: pd.Series, factor_data: pd.DataFrame) -> dict:
+        """Calculate factor model regression for a single asset.
+
+        Method will calculate regression coefficients and other statistics and
+        return a dictionary with the results.
+
+        Args:
+            returns_data: The preprocessed asset returns data.
+            factor_data: The preprocessed factor data.
+
+        Returns:
+            regression_stats: The regression results.
+
+        """
+        # set up
+        observations = returns_data.notna()
+        X = factor_data.loc[observations].values
+        y = returns_data[observations].values
+
+        # calculate
+        if observations.sum() >= X.shape[1]:
+            coef = np.linalg.inv(X.T @ X) @ (X.T @ y)
+        else:
+            coef = np.full(
+                shape=[
+                    X.shape[1],
+                ],
+                fill_value=np.nan,
+            )
+            warnings.warn(
+                "not enough observations to estimate factor loadings for {}".format(
+                    returns_data.name
+                )
+            )
+        fitted = X @ coef
+        resid = y - fitted
+        sigma2 = (resid ** 2).sum() / (len(y) - X.shape[1])
+        if observations.sum() >= X.shape[1]:
+            se = sigma2 * np.diag(np.linalg.inv(X.T @ X))
+        else:
+            se = np.full(
+                shape=[
+                    X.shape[1],
+                ],
+                fill_value=np.nan,
+            )
+        r2 = 1 - sigma2 / y.var()
+
+        # collect
+        regression_stats = {
+            "name": returns_data.name,
+            "coef": coef,
+            "fitted": fitted,
+            "resid": resid,
+            "se": se,
+            "sigma2": sigma2,
+            "r2": r2,
+            "index": returns_data.index[observations],
+            "factor_means": X.mean(axis=0),
+            "asset_mean": y.mean(),
+        }
+        return regression_stats
+
+    def _store_regression_stats(self, stats: dict):
+        """Store the results of a factor regression in the storage arrays.
+
+        Args:
+            stats: Factor regression results.
+
+        """
+        self._coef_.loc[:, stats["name"]] = stats["coef"]
+
+        # K(+1) times N attributes
+        self._coef_.loc[:, stats["name"]] = stats["coef"]
+        self._se_.loc[:, stats["name"]] = stats["se"]
+        # self._factor_means_.loc[:, stats["name"]] = stats["factor_means"]
+
+        # N times 1 attributes
+        self._sigma2_.loc[stats["name"]] = stats["sigma2"]
+        self._r2_.loc[stats["name"]] = stats["r2"]
+        self._asset_means_.loc[stats["name"]] = stats["asset_mean"]
+
+        # T times N attributes
+        self._fitted_.loc[stats["index"], stats["name"]] = stats["fitted"]
+        self._resid_.loc[stats["index"], stats["name"]] = stats["resid"]
+
+    def fit(self, returns_data: pd.DataFrame, add_constant: bool = True):
+        """Fit the factor model to an array of returns data.
+
+        Args:
+            returns_data: Asset returns data indexed by a DatetimeIndex.
+            add_constant: Indicates if model is to be estimated with alpha.
+
+        """
+        # prepare
+        returns_data = self._preprocess_returns_data(returns_data=returns_data)
+        factor_data = self._preprocess_factor_data(
+            returns_data=returns_data, add_constant=add_constant
+        )
+        self._set_up_attributes(returns=returns_data, factors=factor_data)
+
+        # run regressions
+        for asset, asset_returns in returns_data.items():
+            regression_stats = self._regress(
+                returns_data=asset_returns, factor_data=factor_data
+            )
+            self._store_regression_stats(stats=regression_stats)
+
+        # update
+        self.is_fitted = True
+        self._sample_factor_data_ = factor_data.iloc[:, int(add_constant) :]
+
+    @property
+    def coef_(self):
+        """The estimated model coefficients."""
+        if not self.is_fitted:
+            raise AttributeError("model is not fitted")
+        else:
+            return self._coef_
+
+    @property
+    def alphas_(self):
+        """The estimated model alphas."""
+        if not self.is_fitted:
+            raise AttributeError("model is not fitted")
+        elif not "const" in self._coef_.index:
+            raise AttributeError("model fitted without intercept")
+        else:
+            return self._coef_.loc["const"]
+
+    @property
+    def betas_(self):
+        """The estimated factor loadings."""
+        if not self.is_fitted:
+            raise AttributeError("model is not fitted")
+        elif "const" in self._coef_.index:
+            return self._coef_.iloc[1:, :].T
+        else:
+            return self._coef_.T
+
+    @property
+    def se_(self):
+        """The estimated coefficient standard errors."""
+        if not self.is_fitted:
+            raise AttributeError("model is not fitted")
+        else:
+            return self._se_
+
+    @property
+    def sigma2_(self):
+        """The estimated idiosyncratic volatilities."""
+        if not self.is_fitted:
+            raise AttributeError("model is not fitted")
+        else:
+            return self._sigma2_
+
+    @property
+    def r2_(self):
+        """The estimated idiosyncratic volatilities."""
+        if not self.is_fitted:
+            raise AttributeError("model is not fitted")
+        else:
+            return self._r2_
+
+    @property
+    def fitted_(self):
+        """The model fitted values."""
+        if not self.is_fitted:
+            raise AttributeError("model is not fitted")
+        else:
+            return self._fitted_
+
+    @property
+    def t_obs_(self):
+        """The model fitted values."""
+        if not self.is_fitted:
+            raise AttributeError("model is not fitted")
+        else:
+            return self.fitted_.shape[0]
+
+    @property
+    def n_assets_(self):
+        """The model fitted values."""
+        if not self.is_fitted:
+            raise AttributeError("model is not fitted")
+        else:
+            return self.fitted_.shape[1]
+
+    @property
+    def residuals_(self):
+        """The model residuals."""
+        if not self.is_fitted:
+            raise AttributeError("model is not fitted")
+        else:
+            return self._resid_.astype(float)
+
+    @property
+    def factor_means_(self):
+        """The mean factor returns."""
+        if not self.is_fitted:
+            raise AttributeError("model is not fitted")
+        else:
+            return self._sample_factor_data_.mean()
+
+    @property
+    def factor_vcv_(self):
+        """The mean factor returns."""
+        if not self.is_fitted:
+            raise AttributeError("model is not fitted")
+        else:
+            return self._sample_factor_data_.cov()
+
+    @property
+    def asset_means_(self):
+        """The mean asset returns."""
+        if not self.is_fitted:
+            raise AttributeError("model is not fitted")
+        else:
+            return self._asset_means_
+
+    @property
+    def expected_returns_(self):
+        """The expected returns from the factor model estimates."""
+        expected_returns = (
+            (self.betas_ * self.factor_means_.iloc[-self.k_factors :].T)
+            .sum(axis=1)
+            .rename("expret")
+        )
         return expected_returns
 
+    def perform_grs_test(self):
+        """Returns the GRS test statistic and its corresponding p-value.
 
-    def plot_predictions(self, annual_obs=1, **kwargs):
+        The test statistic checks the cross-sectional asset-pricing model as in
+        Gibbons/Ross/Shanken (1989).
+            Hypothesis: alpha1 = alpha2 = ... = alphaN = 0
+        That is, if the alphas from N time series regressions on N test assets
+        are jointly zero.
+        Based on Cochrane (2001) Chapter 12.1
 
-        '''
-        Plots the factor model's predictions against the realisations in the
+        Returns:
+            f_statistic: The calculated test statistic.
+            p_value: The corresponding p-value.
+
+        """
+        # dimensions
+        T = self.t_obs_
+        N = self.n_assets_
+        K = self.k_factors
+
+        # factor data
+        factor_means = self.factor_means_
+        factor_vcv = self.factor_vcv_
+
+        # regression outputs
+        alphas = self.alphas_
+        residuals = self.residuals_
+
+        # asset VCV
+        asset_vcv = (T - 1) / (T - 1 - K) * np.matrix(residuals.cov())
+
+        # GRS F-statistic
+        f_statistic = (
+            (T - N - K)
+            / N
+            * (1 + factor_means.T @ np.linalg.pinv(factor_vcv) @ factor_means) ** -1
+            * (alphas.T @ np.linalg.pinv(asset_vcv) @ alphas)
+        )
+
+        # p-Value for GRS statistic: GRS ~ F(N,T-N-K)
+        p_value = 1 - sp.stats.f.cdf(f_statistic, N, T - N - K)
+        return (f_statistic, p_value)
+
+    def plot_predictions(self, annual_obs: int = 1, **kwargs):
+        """Plots the factor model's predictions against the realisations in the
         sample together with the 45-degree line.
-        '''
 
-        expected_returns = self.calculate_expected_returns(annual_obs)
+        Args:
+            annual_obs: The number of annual observations.
 
+        """
         fig, ax = plt.subplots(1, 1, **kwargs)
 
-        ax.scatter(expected_returns, self.asset_means*annual_obs,
-                    label='Test assets',
-                    marker='x')
-        limits = (max(ax.get_xlim()[0],ax.get_ylim()[0]),\
-                  min(ax.get_xlim()[1],ax.get_ylim()[1]))
-        ax.plot(limits, limits,
-                    clip_on=True, scalex=False, scaley=False,
-                    label='45° Line',
-                    c='k', linewidth=1, linestyle=':')
-        ax.set_xlabel('Expected Return')
-        ax.set_ylabel('Realised Return')
-        ax.legend(loc='lower right')
+        ax.scatter(
+            self.expected_returns_ * annual_obs,
+            self.asset_means_ * annual_obs,
+            label="Test assets",
+            marker="x",
+        )
+        limits = (
+            max(ax.get_xlim()[0], ax.get_ylim()[0]),
+            min(ax.get_xlim()[1], ax.get_ylim()[1]),
+        )
+        ax.plot(
+            limits,
+            limits,
+            clip_on=True,
+            scalex=False,
+            scaley=False,
+            label="45° Line",
+            c="k",
+            linewidth=1,
+            linestyle=":",
+        )
+        ax.set_xlabel("Expected return")
+        ax.set_ylabel("Realized return")
+        ax.legend(loc="lower right")
 
         return fig
 
+    def plot_results(self, annual_obs: int = 1, **kwargs):
 
-    def plot_results(self, annual_obs=1, **kwargs):
-
-        '''
+        """
         Plots the factor model's estimates in 4 subplots:
         - alphas
         - betas
         - mean returns
         - r squares
-        '''
+        """
 
         fig, axes = plt.subplots(4, 1, **kwargs)
 
-        axes[0].errorbar(range(1,len(self.alphas)+1), self.alphas*annual_obs,
-                                    yerr=self.alphas_se*annual_obs, fmt='-o')
-        axes[0].axhline(0, color='grey', linestyle='--', linewidth=1)
-        axes[0].set_title('Annual alphas & standard errors')
-        axes[0].set_xticks(range(1,len(self.alphas)+1))
+        axes[0].errorbar(
+            range(1, len(self.alphas_) + 1),
+            self.alphas_ * annual_obs,
+            yerr=self.se_.loc["const"] * annual_obs,
+            fmt="-o",
+        )
+        axes[0].axhline(0, color="grey", linestyle="--", linewidth=1)
+        axes[0].set_title("Annual alphas & standard errors")
+        axes[0].set_xticks(range(1, len(self.alphas_) + 1))
         axes[0].set_xticklabels([])
-        #axes[0].xaxis.set_tick_params(labeltop=True, labelbottom=False)
-        #axes[0].set_xticklabels(self.alphas.index, rotation='vertical', y=1.1)
+        # axes[0].xaxis.set_tick_params(labeltop=True, labelbottom=False)
+        # axes[0].set_xticklabels(self.alphas_.index, rotation="vertical", y=1.1)
 
-        for (factor_name, beta_data) in self.betas.iteritems():
-            axes[1].errorbar(range(1,len(self.betas)+1), beta_data,
-                                    yerr=self.betas_se[factor_name], fmt='-o')
-        axes[1].axhline(0, color='grey', linestyle='--', linewidth=1)
-        axes[1].axhline(1, color='grey', linestyle=':', linewidth=1)
-        axes[1].set_title('Factor loadings (betas) & standard errors')
-        axes[1].set_xticks(range(1,len(self.alphas)+1))
-        axes[1].legend(loc='upper left')
+        for (factor_name, beta_data) in self.betas_.iteritems():
+            axes[1].errorbar(
+                range(1, len(self.betas_) + 1),
+                beta_data,
+                yerr=self.se_.loc[factor_name, :],
+                fmt="-o",
+                label=factor_name,
+            )
+        axes[1].axhline(0, color="grey", linestyle="--", linewidth=1)
+        axes[1].axhline(1, color="grey", linestyle=":", linewidth=1)
+        axes[1].set_title("Factor loadings (betas) & standard errors")
+        axes[1].set_xticks(range(1, len(self.alphas_) + 1))
+        axes[1].legend(loc="upper left")
         axes[1].set_xticklabels([])
 
-        axes[2].plot(self.asset_means*annual_obs, marker='o')
-        axes[2].set_title('Mean Return')
-        axes[2].set_xticks(range(1,len(self.alphas)+1))
+        axes[2].plot(
+            range(1, len(self.alphas_) + 1),
+            self.asset_means_ * annual_obs,
+            marker="o",
+            label="Mean return",
+        )
+        axes[2].plot(
+            range(1, len(self.alphas_) + 1),
+            self.expected_returns_ * annual_obs,
+            marker="o",
+            label="Expected return",
+        )
+        axes[2].axhline(0, color="grey", linestyle="--", linewidth=1)
+        axes[2].set_title("Return")
+        axes[2].set_xticks(range(1, len(self.alphas_) + 1))
+        axes[2].legend(loc="upper left")
         axes[2].set_xticklabels([])
 
-        axes[3].plot(self.r_squares, marker='o')
-        axes[3].set_title('R²')
-        axes[3].set_xticks(range(1,len(self.alphas)+1))
-        axes[3].set_xticklabels(self.r_squares.index)#, rotation='vertical')
+        axes[3].plot(range(1, len(self.alphas_) + 1), self.r2_, marker="o")
+        axes[3].set_title("R²")
+        axes[3].set_xticks(range(1, len(self.alphas_) + 1))
+        axes[3].set_xticklabels(self.r2_.index, rotation="vertical")
 
         return fig
