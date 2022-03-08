@@ -242,11 +242,11 @@ class RegressionTable(pd.DataFrame):
             type(regression_model)
             is sm.regression.linear_model.RegressionResultsWrapper
         ):
-            column = _create_statsmodels_summary_column(
+            column = self._create_statsmodels_summary_column(
                 regression_model, **kwargs
             ).rename("(" + str(self._nregs) + ")")
         elif type(regression_model) is lm.panel.results.PanelEffectsResults:
-            column = _create_linearmodels_summary_column(
+            column = self._create_linearmodels_summary_column(
                 regression_model, **kwargs
             ).rename("(" + str(self._nregs) + ")")
         joined_table = self.join(column, how="outer", sort=False).replace(np.nan, "")
@@ -276,7 +276,7 @@ class RegressionTable(pd.DataFrame):
             **kwargs,
         )
 
-    def change_row_labels(self, index_dict: dict) -> RegressionTable:
+    def change_row_labels(self, index_dict: dict):
         """Put new labels on the rows.
 
         Args:
@@ -300,7 +300,7 @@ class RegressionTable(pd.DataFrame):
         self.index = new_index
         return self
 
-    def change_column_labels(self, reg_dict: dict) -> RegressionTable:
+    def change_column_labels(self, reg_dict: dict):
         """Put new labels on the regression columns.
 
         Args:
@@ -317,7 +317,7 @@ class RegressionTable(pd.DataFrame):
         self.columns = new_columns
         return self
 
-    def drop_second_index(self) -> RegressionTable:
+    def drop_second_index(self):
         """Removes the second layer of row labels.
 
         Returns:
@@ -333,7 +333,7 @@ class RegressionTable(pd.DataFrame):
         self.index = new_index
         return self
 
-    def change_variable_order(self, variable_list: list) -> RegressionTable:
+    def change_variable_order(self, variable_list: list):
         """Put regression variables in new order.
 
         Args:
@@ -352,7 +352,7 @@ class RegressionTable(pd.DataFrame):
         reg_table = top.append(bottom)
         return reg_table
 
-    def change_descriptive_order(self, descriptive_list: list) -> RegressionTable:
+    def change_descriptive_order(self, descriptive_list: list):
         """Put regression variables in new order.
 
         Args:
