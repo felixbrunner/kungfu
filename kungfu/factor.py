@@ -262,11 +262,14 @@ class FactorModel:
         self.is_fitted = True
         self._sample_factor_data_ = factor_data.iloc[:, int(add_constant) :]
 
-    def predict(self, returns_data: pd.DataFrame = None) -> pd.DataFrame:
+    def predict(
+        self, returns_data: pd.DataFrame = None, constant: bool = True
+    ) -> pd.DataFrame:
         """Predict returns with the fitted model.
 
         Args:
             returns_data: Optional data input to match periods.
+            constant: Indicates whether to include the fitted intercepts in the predictions.
 
         Returns:
             df_preds: DataFrame with predictions.
@@ -279,14 +282,26 @@ class FactorModel:
         if returns_data is None:
             returns_data = self.factor_data
         else:
-            assert all(returns_data.columns == self.coef_.columns), "input series do not match coefficients"
+            assert all(
+                returns_data.columns == self.coef_.columns
+            ), "input series do not match coefficients"
             returns_data = self._preprocess_returns_data(returns_data=returns_data)
-        factor_data = self._preprocess_factor_data(
-            returns_data=returns_data, add_constant="const" in self.coef_.index
-        )
 
         # predict
-        preds = factor_data.values @ self._coef_.values
+        if constant:
+            factor_data = self._preprocess_factor_data(
+                returns_data=returns_data, add_constant="const" in self.coef_.index
+            )
+            preds = factor_data.values @ self._coef_.values
+        else:
+            factor_data = self._preprocess_factor_data(
+                returns_data=returns_data, add_constant=False
+            )
+            if "const" in self.coef_.index:
+                preds = factor_data.values @ self._coef_.drop(index="const").values
+            else:
+                preds = factor_data.values @ self._coef_.values
+
         df_preds = pd.DataFrame(
             data=preds, index=returns_data.index, columns=self.coef_.columns
         )

@@ -20,6 +20,7 @@ setup(
     ],
     install_requires=[
         "pandas",
+        "pandas-datareader",
     ],
     python_requires=">=3.6",
 )
